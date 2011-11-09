@@ -1,8 +1,10 @@
 import numpy as np
 
+# numpy meshgrid() generalized to an arbitrary number of dimensions
+# Details: http://stackoverflow.com/questions/1827489/numpy-meshgrid-in-3d
 
 def meshgrid_nd(*arrs):
-    arrs = tuple(reversed(arrs))  #edit
+    arrs = tuple(reversed(arrs))
     lens = map(len, arrs)
     dim = len(arrs)
 
