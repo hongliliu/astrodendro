@@ -49,7 +49,7 @@ class Leaf(object):
         return image
 
     def plot_dendrogram(self, ax, base_level, lines):
-        line = [(self.id, np.max(self.f)), (self.id, base_level)]
+        line = [(self.id, self.fmax), (self.id, base_level)]
         lines.append(line)
         return lines
 
@@ -89,14 +89,14 @@ class Branch(Leaf):
         return Leaf.add_footprint(self, image, level)
 
     def plot_dendrogram(self, ax, base_level, lines):
-        line = [(self.id, np.min(self.f)), (self.id, base_level)]
+        line = [(self.id, self.fmin), (self.id, base_level)]
         lines.append(line)
         items_ids = [item.id for item in self.items]
-        line = [(np.min(items_ids), np.min(self.f)), \
-                (np.max(items_ids), np.min(self.f))]
+        line = [(np.min(items_ids), self.fmin), \
+                (np.max(items_ids), self.fmin)]
         lines.append(line)
         for item in self.items:
-            lines = item.plot_dendrogram(ax, np.min(self.f), lines)
+            lines = item.plot_dendrogram(ax, self.fmin, lines)
         return lines
 
     def set_id(self, start):
