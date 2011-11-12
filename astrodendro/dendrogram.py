@@ -28,6 +28,12 @@ import numpy as np
 from astrodendro.components import Trunk, Branch, Leaf
 from astrodendro.meshgrid import meshgrid_nd
 from astrodendro.newick import parse_newick
+try:
+    import matplotlib
+    import matplotlib.pylab
+except ImportError:
+    # The plot method won't work without matplotlib, but everything else will be fine
+    pass
 
 
 class Dendrogram(object):
@@ -417,3 +423,16 @@ class Dendrogram(object):
             self.data = self.data[0, :, :]
             self.index_map = self.index_map[0, :, :]
             self.item_type_map = self.item_type_map[0, :, :]
+    
+    def plot(self, root_branch = None):
+        axis = matplotlib.pylab.gca()
+        ymin = 0 # TODO: Calculate!
+        if root_branch == None:
+            lines = self.trunk.plot_dendrogram(ymin)
+        else:
+            lines = self.trunk[root_branch].plot_dendrogram(None, ymin, [])
+        axis.set_xlim([0, max( [line[0][0] for line in lines] )]) 
+        axis.set_ylim([ymin, max( [line[0][1] for line in lines] )])
+        line_collection = matplotlib.collections.LineCollection(lines)
+        axis.add_collection(line_collection)
+        matplotlib.pylab.draw_if_interactive()

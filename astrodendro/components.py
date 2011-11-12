@@ -125,6 +125,13 @@ class Branch(Leaf):
 
 class Trunk(list):
 
+    def plot_dendrogram(self, base_level):
+        # recursively generate the necessary lines:
+        lines = [i.plot_dendrogram(None, base_level, []) for i in self]
+        # combine these to one list:
+        lines = [item for sublist in lines for item in sublist] # See http://stackoverflow.com/questions/952914/making-a-flat-list-out-of-list-of-lists-in-python
+        return lines
+
     def to_newick(self):
         newick_items = []
         for item in self:
