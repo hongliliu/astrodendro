@@ -48,10 +48,12 @@ class Leaf(object):
         image[self.z, self.y, self.x] = level
         return image
 
-    def plot_dendrogram(self, ax, base_level, lines):
-        line = [(self.id, self.fmax), (self.id, base_level)]
-        lines.append(line)
-        return lines
+    def plot_dendrogram(self, plot, parent_y_level):
+        # Draw the vertical line for this leaf:
+        x = plot.cur_x
+        plot.add_line( (x, self.fmax*plot.flux_mult), (x, parent_y_level) )
+        plot.cur_x += plot.x_increment
+        return x
 
     def set_id(self, leaf_id):
         self.id = leaf_id
@@ -88,16 +90,16 @@ class Branch(Leaf):
                 image = item.add_footprint(image, level + 1)
         return Leaf.add_footprint(self, image, level)
 
-    def plot_dendrogram(self, ax, base_level, lines):
-        line = [(self.id, self.fmin), (self.id, base_level)]
-        lines.append(line)
-        items_ids = [item.id for item in self.items]
-        line = [(np.min(items_ids), self.fmin), \
-                (np.max(items_ids), self.fmin)]
-        lines.append(line)
-        for item in self.items:
-            lines = item.plot_dendrogram(ax, self.fmin, lines)
-        return lines
+    def plot_dendrogram(self, plot, parent_y_level):
+        y_level = self.fmin * plot.flux_mult
+        # Plot child branches & leaves, recording the x values at which they are plotted:
+        xvalues = [item.plot_dendrogram(plot, y_level) for item in self.items]
+        mean_x = int(sum(xvalues) / len(xvalues))
+        # Add vertical line for this branch:
+        plot.add_line( (mean_x, parent_y_level), (mean_x, y_level) )
+        # Add horizontal line for this branch:
+        plot.add_line( (xvalues[0], y_level), (xvalues[-1], y_level) )
+        return mean_x
 
     def set_id(self, start):
         item_id = start
@@ -125,12 +127,19 @@ class Branch(Leaf):
 
 class Trunk(list):
 
-    def plot_dendrogram(self, base_level):
+    def plot_dendrogram(self, line_width, spacing):
+        # Find the minimum flux among all root branches:
+        min_f = np.min([item.fmin for item in self])
+        # Set up variables needed for plotting:
+        plot = DendrogramPlotInfo(line_width, spacing, min_f)
         # recursively generate the necessary lines:
-        lines = [i.plot_dendrogram(None, base_level, []) for i in self]
-        # combine these to one list:
-        lines = [item for sublist in lines for item in sublist] # See http://stackoverflow.com/questions/952914/making-a-flat-list-out-of-list-of-lists-in-python
-        return lines
+        for item in self:
+            item.plot_dendrogram(plot, plot.ymin)
+        # Add a bit of padding above & below the plot:
+        plot_vspace = (plot.ymax - plot.ymin) * 0.01
+        plot.ymin -= plot_vspace
+        plot.ymax += plot_vspace
+        return plot
 
     def to_newick(self):
         newick_items = []
@@ -146,3 +155,24 @@ class Trunk(list):
             else:
                 leaves += item.get_leaves()
         return leaves
+
+class DendrogramPlotInfo():
+    def __init__(self, line_width, spacing, min_flux):
+        self.line_width = line_width
+        self.spacing = spacing
+        self.x_increment = line_width + spacing
+        self.flux_mult = line_width # All y values (flux values) should be multiplied by this factor 
+        self.cur_x = 0
+        self.lines = [] # list of lists of (x,y) tuples
+        
+        # the xmin, xmax, ymin, ymax properties give the size of the canvas onto which the lines are drawn
+        self.ymin = min_flux * self.flux_mult
+        self.ymax = self.ymin
+    @property
+    def xmin(self): return 0 - self.x_increment
+    @property
+    def xmax(self): return self.cur_x + self.x_increment
+    def add_line(self, point1, point2):
+        self.lines.append([point1, point2])
+        if point1[1] > self.ymax: self.ymax = point1[1]
+        if point2[1] > self.ymax: self.ymax = point2[1]

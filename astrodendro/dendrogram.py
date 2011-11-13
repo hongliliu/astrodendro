@@ -424,15 +424,11 @@ class Dendrogram(object):
             self.index_map = self.index_map[0, :, :]
             self.item_type_map = self.item_type_map[0, :, :]
     
-    def plot(self, root_branch = None):
+    def plot(self, line_width = 1, spacing = 5):
         axis = matplotlib.pylab.gca()
-        ymin = 0 # TODO: Calculate!
-        if root_branch == None:
-            lines = self.trunk.plot_dendrogram(ymin)
-        else:
-            lines = self.trunk[root_branch].plot_dendrogram(None, ymin, [])
-        axis.set_xlim([0, max( [line[0][0] for line in lines] )]) 
-        axis.set_ylim([ymin, max( [line[0][1] for line in lines] )])
-        line_collection = matplotlib.collections.LineCollection(lines)
+        plot = self.trunk.plot_dendrogram(line_width, spacing)
+        axis.set_xlim([plot.xmin, plot.xmax]) 
+        axis.set_ylim([plot.ymin, plot.ymax])
+        line_collection = matplotlib.collections.LineCollection(plot.lines, linewidths = line_width)
         axis.add_collection(line_collection)
         matplotlib.pylab.draw_if_interactive()
