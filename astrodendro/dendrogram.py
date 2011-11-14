@@ -136,7 +136,7 @@ class Dendrogram(object):
                 idx = self._next_idx()
 
                 # Create leaf
-                leaf = Leaf(X[i], Y[i], Z[i], flux[i], id=idx)
+                leaf = Leaf(X[i], Y[i], Z[i], flux[i], idx=idx)
 
                 # Add leaf to overall list
                 items[idx] = leaf
@@ -268,7 +268,7 @@ class Dendrogram(object):
 
                     # Create branch
                     branch = Branch([items[j] for j in adjacent], \
-                                    X[i], Y[i], Z[i], flux[i], id=idx)
+                                    X[i], Y[i], Z[i], flux[i], idx=idx)
 
                     # Add branch to overall list
                     items[idx] = branch
@@ -401,12 +401,12 @@ class Dendrogram(object):
                 f = self.data[self.index_map == idx]
                 if type(d[idx]) == tuple:
                     sub_items = construct_tree(d[idx][0])
-                    b = Branch(sub_items, x[0], y[0], z[0], f[0], id=idx)
+                    b = Branch(sub_items, x[0], y[0], z[0], f[0], idx=idx)
                     for i in range(1, len(x)):
                         b.add_point(x[i], y[i], z[i], f[i])
                     items.append(b)
                 else:
-                    l = Leaf(x[0], y[0], z[0], f[0], id=idx)
+                    l = Leaf(x[0], y[0], z[0], f[0], idx=idx)
                     for i in range(1, len(x)):
                         l.add_point(x[i], y[i], z[i], f[i])
                     items.append(l)

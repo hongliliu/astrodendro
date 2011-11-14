@@ -4,7 +4,7 @@ import numpy as np
 
 class Leaf(object):
 
-    def __init__(self, x, y, z, f, id=None):
+    def __init__(self, x, y, z, f, idx=None):
         self.x = np.array([x], dtype=int)
         self.y = np.array([y], dtype=int)
         self.z = np.array([z], dtype=int)
@@ -13,7 +13,7 @@ class Leaf(object):
         self.ymin, self.ymax = y, y
         self.zmin, self.zmax = z, z
         self.fmin, self.fmax = f, f
-        self.id = id
+        self.idx = idx
         self.parent = None
 
     def __getattr__(self, attribute):
@@ -55,12 +55,12 @@ class Leaf(object):
         plot.cur_x += plot.x_increment
         return x
 
-    def set_id(self, leaf_id):
-        self.id = leaf_id
-        return leaf_id + 1
+    def set_idx(self, leaf_idx):
+        self.idx = leaf_idx
+        return leaf_idx + 1
 
     def to_newick(self):
-        return "%i:%.3f" % (self.id, self.fmax - self.fmin)
+        return "%i:%.3f" % (self.idx, self.fmax - self.fmin)
 
     def get_peak(self):
         imax = np.argmax(self.f)
@@ -69,11 +69,11 @@ class Leaf(object):
 
 class Branch(Leaf):
 
-    def __init__(self, items, x, y, z, f, id=None):
+    def __init__(self, items, x, y, z, f, idx=None):
         self.items = items
         for item in items:
             item.parent = self
-        Leaf.__init__(self, x, y, z, f, id=id)
+        Leaf.__init__(self, x, y, z, f, idx=idx)
 
     def __getattr__(self, attribute):
         if attribute == 'npix':
@@ -101,19 +101,19 @@ class Branch(Leaf):
         plot.add_line( (xvalues[0], y_level), (xvalues[-1], y_level) )
         return mean_x
 
-    def set_id(self, start):
-        item_id = start
+    def set_idx(self, start):
+        item_idx = start
         for item in self.items:
-            if not hasattr(self, 'id'):
-                item_id = item.set_id(item_id)
-        self.id = np.mean([item.id for item in self.items])
-        return item_id
+            if not hasattr(self, 'idx'):
+                item_idx = item.set_idx(item_idx)
+        self.idx = np.mean([item.idx for item in self.items])
+        return item_idx
 
     def to_newick(self):
         newick_items = []
         for item in self.items:
             newick_items.append(item.to_newick())
-        return "(%s)%s:%.3f" % (string.join(newick_items, ','), self.id, self.fmax - self.fmin)
+        return "(%s)%s:%.3f" % (string.join(newick_items, ','), self.idx, self.fmax - self.fmin)
 
     def get_leaves(self):
         leaves = []
