@@ -79,7 +79,10 @@ class Dendrogram(object):
             print "Number of points above minimum: %i" % len(flux_values)
             
         # Define index array indicating what item each cell is part of
-        self.index_map = np.zeros(self.data.shape, dtype=np.int32)
+        # We expand each dimension by one, so the last value of each
+        # index (accessed with e.g. [nx,#,#] or [-1,#,#]) is always zero
+        # This permits an optimization below when finding adjacent items
+        self.index_map = np.zeros((nz+1,ny+1,nx+1), dtype=np.int32)
 
         # Dictionary of currently-defined items:
         items = {}
@@ -101,20 +104,9 @@ class Dendrogram(object):
             count += 1
 
             # Check if point is adjacent to any leaf
-            adjacent = []
-            if x > 0        and self.index_map[z, y, x - 1] > 0:
-                adjacent.append(self.index_map[z, y, x - 1])
-            if x < nx - 1   and self.index_map[z, y, x + 1] > 0:
-                adjacent.append(self.index_map[z, y, x + 1])
-            if y > 0        and self.index_map[z, y - 1, x] > 0:
-                adjacent.append(self.index_map[z, y - 1, x])
-            if y < ny - 1   and self.index_map[z, y + 1, x] > 0:
-                adjacent.append(self.index_map[z, y + 1, x])
-            if z > 0        and self.index_map[z - 1, y, x] > 0:
-                adjacent.append(self.index_map[z - 1, y, x])
-            if z < nz - 1   and self.index_map[z + 1, y, x] > 0:
-                adjacent.append(self.index_map[z + 1, y, x])
-                
+            indices_adjacent = [(z,y,x-1),(z,y,x+1),(z,y-1,x),(z,y+1,x),(z-1,y,x),(z+1,y,x)]
+            adjacent = [self.index_map[c] for c in indices_adjacent if self.index_map[c] != 0]
+            
             # Replace adjacent elements by its ancestor
             for j in range(len(adjacent)):
                 if ancestor[adjacent[j]] is not None:
