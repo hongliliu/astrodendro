@@ -383,8 +383,6 @@ class Dendrogram(object):
             self.index_map = f['index_map'].value
             self.item_type_map = f['item_type_map'].value
 
-        # Extract data shape
-        nz, ny, nx = self.data.shape
 
         # Create arrays with pixel positions
         x = np.arange(self.data.shape[2], dtype=np.int32)
