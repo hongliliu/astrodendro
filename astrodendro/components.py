@@ -55,10 +55,6 @@ class Leaf(object):
         plot.cur_x += plot.x_increment
         return x
 
-    def set_idx(self, leaf_idx):
-        self.idx = leaf_idx
-        return leaf_idx + 1
-
     def to_newick(self):
         return "%i:%.3f" % (self.idx, self.fmax - self.fmin)
 
@@ -100,14 +96,6 @@ class Branch(Leaf):
         # Add horizontal line for this branch:
         plot.add_line( (xvalues[0], y_level), (xvalues[-1], y_level) )
         return mean_x
-
-    def set_idx(self, start):
-        item_idx = start
-        for item in self.items:
-            if not hasattr(self, 'idx'):
-                item_idx = item.set_idx(item_idx)
-        self.idx = np.mean([item.idx for item in self.items])
-        return item_idx
 
     def to_newick(self):
         newick_items = []
