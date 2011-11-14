@@ -63,11 +63,13 @@ class Dendrogram(object):
         if len(data.shape) == 2:
             self.n_dim = 2
             self.data = data.reshape(1, data.shape[0], data.shape[1])
-        else:
+        elif len(data.shape) == 3:
             self.n_dim = 3
             self.data = data
+        else:
+            raise Exception("Invalid # of dimensions")
 
-        # Extract data shape
+        # Record data shape
         nz, ny, nx = self.data.shape
 
         # Create a list of all points in the cube above minimum_flux
