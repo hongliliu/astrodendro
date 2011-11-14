@@ -199,7 +199,7 @@ class Dendrogram(object):
                         leaf.merge(removed)
 
                         # Update index map
-                        self.index_map = removed.add_footprint(self.index_map, idx)
+                        removed.add_footprint(self.index_map, idx)
 
                 elif len(adjacent) == 1:
 
@@ -225,7 +225,7 @@ class Dendrogram(object):
                             leaf.merge(removed)
 
                             # Update index map
-                            self.index_map = removed.add_footprint(self.index_map, idx)
+                            removed.add_footprint(self.index_map, idx)
 
                     else:
 
@@ -249,7 +249,7 @@ class Dendrogram(object):
                             branch.merge(removed)
 
                             # Update index map
-                            self.index_map = removed.add_footprint(self.index_map, idx)
+                            removed.add_footprint(self.index_map, idx)
 
                 else:
 
@@ -280,7 +280,7 @@ class Dendrogram(object):
                         branch.merge(removed)
 
                         # Update index map
-                        self.index_map = removed.add_footprint(self.index_map, idx)
+                        removed.add_footprint(self.index_map, idx)
 
                     for j in adjacent:
                         ancestor[j] = idx
@@ -312,9 +312,9 @@ class Dendrogram(object):
         for idx in items:
             item = items[idx]
             if type(item) == Leaf:
-                self.item_type_map = item.add_footprint(self.item_type_map, 2)
+                item.add_footprint(self.item_type_map, 2)
             else:
-                self.item_type_map = item.add_footprint(self.item_type_map, 1, recursive=False)
+                item.add_footprint(self.item_type_map, 1, recursive=False)
 
         # Re-cast to 2D if original dataset was 2D
         if self.n_dim == 2:
