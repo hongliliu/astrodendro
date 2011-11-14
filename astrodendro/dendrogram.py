@@ -26,7 +26,6 @@
 import numpy as np
 
 from astrodendro.components import Trunk, Branch, Leaf
-from astrodendro.meshgrid import meshgrid_nd
 from astrodendro.newick import parse_newick
 try:
     import matplotlib
@@ -71,54 +70,51 @@ class Dendrogram(object):
         # Extract data shape
         nz, ny, nx = self.data.shape
 
-        # Create arrays with pixel positions
-        x = np.arange(self.data.shape[2], dtype=np.int32)
-        y = np.arange(self.data.shape[1], dtype=np.int32)
-        z = np.arange(self.data.shape[0], dtype=np.int32)
-        X, Y, Z = meshgrid_nd(x, y, z)
-
-        # Convert to 1D
-        flux, X, Y, Z = self.data.ravel(), X.ravel(), Y.ravel(), Z.ravel()
-
-        # Keep only values above minimum required
-        keep = flux > minimum_flux
-        flux, X, Y, Z = flux[keep], X[keep], Y[keep], Z[keep]
+        # Create a list of all points in the cube above minimum_flux
+        keep = self.data.ravel() > minimum_flux
+        flux_values = self.data.ravel()[keep]
+        coords = np.array(np.unravel_index( np.arange(nz*ny*nx)[keep] , self.data.shape)).transpose()
+        
         if verbose:
-            print "Number of points above minimum: %i" % np.sum(keep)
-
-        # Sort by decreasing flux
-        order = np.argsort(flux)[::-1]
-        flux, X, Y, Z = flux[order], X[order], Y[order], Z[order]
-
+            print "Number of points above minimum: %i" % len(flux_values)
+            
         # Define index array indicating what item each cell is part of
         self.index_map = np.zeros(self.data.shape, dtype=np.int32)
 
-        # Loop from largest to smallest value. Each time, check if the pixel
-        # connects to any existing leaf. Otherwise, create new leaf.
-
+        # Dictionary of currently-defined items:
         items = {}
 
-        for i in range(len(flux)):
+        # Loop from largest to smallest flux value. Each time, check if the 
+        # pixel connects to any existing leaf. Otherwise, create new leaf.
+        
+        count = 0
 
+        for i in np.argsort(flux_values)[::-1]:
+            
+            flux = flux_values[i]
+            coord = coords[i]
+            z,y,x = coord
+            
             # Print stats
-            if verbose and i % 10000 == 0:
-                print "%i..." % i
+            if verbose and count % 10000 == 0:
+                print "%i..." % count
+            count += 1
 
             # Check if point is adjacent to any leaf
             adjacent = []
-            if X[i] > 0 and self.index_map[Z[i], Y[i], X[i] - 1] > 0:
-                adjacent.append(self.index_map[Z[i], Y[i], X[i] - 1])
-            if X[i] < nx - 1 and self.index_map[Z[i], Y[i], X[i] + 1] > 0:
-                adjacent.append(self.index_map[Z[i], Y[i], X[i] + 1])
-            if Y[i] > 0 and self.index_map[Z[i], Y[i] - 1, X[i]] > 0:
-                adjacent.append(self.index_map[Z[i], Y[i] - 1, X[i]])
-            if Y[i] < ny - 1 and self.index_map[Z[i], Y[i] + 1, X[i]] > 0:
-                adjacent.append(self.index_map[Z[i], Y[i] + 1, X[i]])
-            if Z[i] > 0 and self.index_map[Z[i] - 1, Y[i], X[i]] > 0:
-                adjacent.append(self.index_map[Z[i] - 1, Y[i], X[i]])
-            if Z[i] < nz - 1 and self.index_map[Z[i] + 1, Y[i], X[i]] > 0:
-                adjacent.append(self.index_map[Z[i] + 1, Y[i], X[i]])
-
+            if x > 0        and self.index_map[z, y, x - 1] > 0:
+                adjacent.append(self.index_map[z, y, x - 1])
+            if x < nx - 1   and self.index_map[z, y, x + 1] > 0:
+                adjacent.append(self.index_map[z, y, x + 1])
+            if y > 0        and self.index_map[z, y - 1, x] > 0:
+                adjacent.append(self.index_map[z, y - 1, x])
+            if y < ny - 1   and self.index_map[z, y + 1, x] > 0:
+                adjacent.append(self.index_map[z, y + 1, x])
+            if z > 0        and self.index_map[z - 1, y, x] > 0:
+                adjacent.append(self.index_map[z - 1, y, x])
+            if z < nz - 1   and self.index_map[z + 1, y, x] > 0:
+                adjacent.append(self.index_map[z + 1, y, x])
+                
             # Replace adjacent elements by its ancestor
             for j in range(len(adjacent)):
                 if ancestor[adjacent[j]] is not None:
@@ -136,13 +132,13 @@ class Dendrogram(object):
                 idx = self._next_idx()
 
                 # Create leaf
-                leaf = Leaf(X[i], Y[i], Z[i], flux[i], idx=idx)
+                leaf = Leaf(x, y, z, flux, idx=idx)
 
                 # Add leaf to overall list
                 items[idx] = leaf
 
                 # Set absolute index of pixel in index map
-                self.index_map[Z[i], Y[i], X[i]] = idx
+                self.index_map[z, y, x] = idx
 
                 # Create new entry for ancestor
                 ancestor[idx] = None
@@ -156,10 +152,10 @@ class Dendrogram(object):
                 item = items[idx]
 
                 # Add point to item
-                item.add_point(X[i], Y[i], Z[i], flux[i])
+                item.add_point(x, y, z, flux)
 
                 # Set absolute index of pixel in index map
-                self.index_map[Z[i], Y[i], X[i]] = idx
+                self.index_map[z, y, x] = idx
 
             else:  # Merge leaves
 
@@ -173,7 +169,7 @@ class Dendrogram(object):
                 for idx in adjacent:
                     if type(items[idx]) == Leaf:
                         leaf = items[idx]
-                        if leaf.npix < minimum_npix or leaf.fmax - flux[i] < minimum_delta:
+                        if leaf.npix < minimum_npix or leaf.fmax - flux < minimum_delta:
                             merge.append(idx)
 
                 # Remove merges from list of adjacent items
@@ -193,10 +189,10 @@ class Dendrogram(object):
                     leaf = items[idx]
 
                     # Add current point to the leaf
-                    leaf.add_point(X[i], Y[i], Z[i], flux[i])
+                    leaf.add_point(x, y, z, flux)
 
                     # Set absolute index of pixel in index map
-                    self.index_map[Z[i], Y[i], X[i]] = idx
+                    self.index_map[z, y, x] = idx
 
                     for i in merge[1:]:
 
@@ -219,10 +215,10 @@ class Dendrogram(object):
                         leaf = items[idx]
 
                         # Add current point to the leaf
-                        leaf.add_point(X[i], Y[i], Z[i], flux[i])
+                        leaf.add_point(x, y, z, flux)
 
                         # Set absolute index of pixel in index map
-                        self.index_map[Z[i], Y[i], X[i]] = idx
+                        self.index_map[z, y, x] = idx
 
                         for i in merge:
 
@@ -243,10 +239,10 @@ class Dendrogram(object):
                         branch = items[idx]
 
                         # Add current point to the branch
-                        branch.add_point(X[i], Y[i], Z[i], flux[i])
+                        branch.add_point(x, y, z, flux)
 
                         # Set absolute index of pixel in index map
-                        self.index_map[Z[i], Y[i], X[i]] = idx
+                        self.index_map[z, y, x] = idx
 
                         for i in merge:
 
@@ -268,13 +264,13 @@ class Dendrogram(object):
 
                     # Create branch
                     branch = Branch([items[j] for j in adjacent], \
-                                    X[i], Y[i], Z[i], flux[i], idx=idx)
+                                    x, y, z, flux, idx=idx)
 
                     # Add branch to overall list
                     items[idx] = branch
 
                     # Set absolute index of pixel in index map
-                    self.index_map[Z[i], Y[i], X[i]] = idx
+                    self.index_map[z, y, x] = idx
 
                     # Create new entry for ancestor
                     ancestor[idx] = None
@@ -298,8 +294,8 @@ class Dendrogram(object):
                             if ancestor[a] == j:
                                 ancestor[a] = idx
 
-        if verbose and not i % 10000 == 0:
-            print "%i..." % i
+        if verbose and not count % 10000 == 0:
+            print "%i..." % count
 
         # Remove orphan leaves that aren't large enough
         remove = []
