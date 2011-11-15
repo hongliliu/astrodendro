@@ -69,9 +69,6 @@ class Dendrogram(object):
         else:
             raise Exception("Invalid # of dimensions")
 
-        # Record data shape
-        nz, ny, nx = self.data.shape
-
         # Create a list of all points in the cube above minimum_flux
         keep = self.data.ravel() > minimum_flux
         flux_values = self.data.ravel()[keep]
@@ -84,7 +81,7 @@ class Dendrogram(object):
         # We expand each dimension by one, so the last value of each
         # index (accessed with e.g. [nx,#,#] or [-1,#,#]) is always zero
         # This permits an optimization below when finding adjacent items
-        self.index_map = np.zeros((nz+1,ny+1,nx+1), dtype=np.int32)
+        self.index_map = np.zeros(np.add(self.data.shape, (1,1,1)), dtype=np.int32)
 
         # Dictionary of currently-defined items:
         items = {}
