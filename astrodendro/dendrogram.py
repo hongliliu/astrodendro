@@ -26,7 +26,6 @@
 import numpy as np
 
 from astrodendro.components import Trunk, Branch, Leaf
-from astrodendro.meshgrid import meshgrid_nd
 from astrodendro.newick import parse_newick
 try:
     import matplotlib
@@ -43,19 +42,8 @@ class Dendrogram(object):
         if len(args) == 1:
             self._compute(*args, **kwargs)
 
-        self._reset_idx()
-
-    def _reset_idx(self):
-        self._idx_counter = 0
-
-    def _next_idx(self):
-        self._idx_counter += 1
-        return self._idx_counter
 
     def _compute(self, data, minimum_flux=-np.inf, minimum_npix=0, minimum_delta=0, verbose=True):
-
-        # Reset ID counter
-        self._reset_idx()
 
         # Initialize list of ancestors
         ancestor = {}
@@ -64,61 +52,56 @@ class Dendrogram(object):
         if len(data.shape) == 2:
             self.n_dim = 2
             self.data = data.reshape(1, data.shape[0], data.shape[1])
-        else:
+        elif len(data.shape) == 3:
             self.n_dim = 3
             self.data = data
+        else:
+            raise Exception("Invalid # of dimensions")
 
-        # Extract data shape
-        nz, ny, nx = self.data.shape
-
-        # Create arrays with pixel positions
-        x = np.arange(self.data.shape[2], dtype=np.int32)
-        y = np.arange(self.data.shape[1], dtype=np.int32)
-        z = np.arange(self.data.shape[0], dtype=np.int32)
-        X, Y, Z = meshgrid_nd(x, y, z)
-
-        # Convert to 1D
-        flux, X, Y, Z = self.data.ravel(), X.ravel(), Y.ravel(), Z.ravel()
-
-        # Keep only values above minimum required
-        keep = flux > minimum_flux
-        flux, X, Y, Z = flux[keep], X[keep], Y[keep], Z[keep]
+        # Create a list of all points in the cube above minimum_flux
+        keep = self.data.ravel() > minimum_flux
+        flux_values = self.data.ravel()[keep]
+        coords = np.array(np.unravel_index( np.arange(self.data.size)[keep] , self.data.shape)).transpose()
+        
         if verbose:
-            print "Number of points above minimum: %i" % np.sum(keep)
-
-        # Sort by decreasing flux
-        order = np.argsort(flux)[::-1]
-        flux, X, Y, Z = flux[order], X[order], Y[order], Z[order]
-
+            print "Number of points above minimum: %i" % len(flux_values)
+            
         # Define index array indicating what item each cell is part of
-        self.index_map = np.zeros(self.data.shape, dtype=np.int32)
+        # We expand each dimension by one, so the last value of each
+        # index (accessed with e.g. [nx,#,#] or [-1,#,#]) is always zero
+        # This permits an optimization below when finding adjacent items
+        self.index_map = np.zeros(np.add(self.data.shape, (1,1,1)), dtype=np.int32)
 
-        # Loop from largest to smallest value. Each time, check if the pixel
-        # connects to any existing leaf. Otherwise, create new leaf.
-
+        # Dictionary of currently-defined items:
         items = {}
 
-        for i in range(len(flux)):
+        # Loop from largest to smallest flux value. Each time, check if the 
+        # pixel connects to any existing leaf. Otherwise, create new leaf.
+        
+        count = 0
 
+        for i in np.argsort(flux_values)[::-1]:
+            
+            def next_idx():
+                return i+1
+                # Generate IDs index i. We add one to avoid ID 0
+            
+            flux = flux_values[i]
+            coord = coords[i]
+            z,y,x = coord
+            
             # Print stats
-            if verbose and i % 10000 == 0:
-                print "%i..." % i
+            if verbose and count % 10000 == 0:
+                print "%i..." % count
+            count += 1
 
             # Check if point is adjacent to any leaf
-            adjacent = []
-            if X[i] > 0 and self.index_map[Z[i], Y[i], X[i] - 1] > 0:
-                adjacent.append(self.index_map[Z[i], Y[i], X[i] - 1])
-            if X[i] < nx - 1 and self.index_map[Z[i], Y[i], X[i] + 1] > 0:
-                adjacent.append(self.index_map[Z[i], Y[i], X[i] + 1])
-            if Y[i] > 0 and self.index_map[Z[i], Y[i] - 1, X[i]] > 0:
-                adjacent.append(self.index_map[Z[i], Y[i] - 1, X[i]])
-            if Y[i] < ny - 1 and self.index_map[Z[i], Y[i] + 1, X[i]] > 0:
-                adjacent.append(self.index_map[Z[i], Y[i] + 1, X[i]])
-            if Z[i] > 0 and self.index_map[Z[i] - 1, Y[i], X[i]] > 0:
-                adjacent.append(self.index_map[Z[i] - 1, Y[i], X[i]])
-            if Z[i] < nz - 1 and self.index_map[Z[i] + 1, Y[i], X[i]] > 0:
-                adjacent.append(self.index_map[Z[i] + 1, Y[i], X[i]])
-
+            # We don't worry about the edges, because overflow or underflow in 
+            # any one dimension will always land on an extra "padding" cell 
+            # with value zero added above when index_map was created
+            indices_adjacent = [(z,y,x-1),(z,y,x+1),(z,y-1,x),(z,y+1,x),(z-1,y,x),(z+1,y,x)]
+            adjacent = [self.index_map[c] for c in indices_adjacent if self.index_map[c] != 0]
+            
             # Replace adjacent elements by its ancestor
             for j in range(len(adjacent)):
                 if ancestor[adjacent[j]] is not None:
@@ -133,16 +116,16 @@ class Dendrogram(object):
             if n_adjacent == 0:  # Create new leaf
 
                 # Set absolute index of the new element
-                idx = self._next_idx()
+                idx = next_idx()
 
                 # Create leaf
-                leaf = Leaf(X[i], Y[i], Z[i], flux[i], idx=idx)
+                leaf = Leaf(x, y, z, flux, idx=idx)
 
                 # Add leaf to overall list
                 items[idx] = leaf
 
                 # Set absolute index of pixel in index map
-                self.index_map[Z[i], Y[i], X[i]] = idx
+                self.index_map[z, y, x] = idx
 
                 # Create new entry for ancestor
                 ancestor[idx] = None
@@ -156,10 +139,10 @@ class Dendrogram(object):
                 item = items[idx]
 
                 # Add point to item
-                item.add_point(X[i], Y[i], Z[i], flux[i])
+                item.add_point(x, y, z, flux)
 
                 # Set absolute index of pixel in index map
-                self.index_map[Z[i], Y[i], X[i]] = idx
+                self.index_map[z, y, x] = idx
 
             else:  # Merge leaves
 
@@ -173,7 +156,7 @@ class Dendrogram(object):
                 for idx in adjacent:
                     if type(items[idx]) == Leaf:
                         leaf = items[idx]
-                        if leaf.npix < minimum_npix or leaf.fmax - flux[i] < minimum_delta:
+                        if leaf.npix < minimum_npix or leaf.fmax - flux < minimum_delta:
                             merge.append(idx)
 
                 # Remove merges from list of adjacent items
@@ -193,10 +176,10 @@ class Dendrogram(object):
                     leaf = items[idx]
 
                     # Add current point to the leaf
-                    leaf.add_point(X[i], Y[i], Z[i], flux[i])
+                    leaf.add_point(x, y, z, flux)
 
                     # Set absolute index of pixel in index map
-                    self.index_map[Z[i], Y[i], X[i]] = idx
+                    self.index_map[z, y, x] = idx
 
                     for i in merge[1:]:
 
@@ -209,7 +192,7 @@ class Dendrogram(object):
                         leaf.merge(removed)
 
                         # Update index map
-                        self.index_map = removed.add_footprint(self.index_map, idx)
+                        removed.add_footprint(self.index_map, idx)
 
                 elif len(adjacent) == 1:
 
@@ -219,10 +202,10 @@ class Dendrogram(object):
                         leaf = items[idx]
 
                         # Add current point to the leaf
-                        leaf.add_point(X[i], Y[i], Z[i], flux[i])
+                        leaf.add_point(x, y, z, flux)
 
                         # Set absolute index of pixel in index map
-                        self.index_map[Z[i], Y[i], X[i]] = idx
+                        self.index_map[z, y, x] = idx
 
                         for i in merge:
 
@@ -235,7 +218,7 @@ class Dendrogram(object):
                             leaf.merge(removed)
 
                             # Update index map
-                            self.index_map = removed.add_footprint(self.index_map, idx)
+                            removed.add_footprint(self.index_map, idx)
 
                     else:
 
@@ -243,10 +226,10 @@ class Dendrogram(object):
                         branch = items[idx]
 
                         # Add current point to the branch
-                        branch.add_point(X[i], Y[i], Z[i], flux[i])
+                        branch.add_point(x, y, z, flux)
 
                         # Set absolute index of pixel in index map
-                        self.index_map[Z[i], Y[i], X[i]] = idx
+                        self.index_map[z, y, x] = idx
 
                         for i in merge:
 
@@ -259,22 +242,22 @@ class Dendrogram(object):
                             branch.merge(removed)
 
                             # Update index map
-                            self.index_map = removed.add_footprint(self.index_map, idx)
+                            removed.add_footprint(self.index_map, idx)
 
                 else:
 
                     # Set absolute index of the new element
-                    idx = self._next_idx()
+                    idx = next_idx()
 
                     # Create branch
                     branch = Branch([items[j] for j in adjacent], \
-                                    X[i], Y[i], Z[i], flux[i], idx=idx)
+                                    x, y, z, flux, idx=idx)
 
                     # Add branch to overall list
                     items[idx] = branch
 
                     # Set absolute index of pixel in index map
-                    self.index_map[Z[i], Y[i], X[i]] = idx
+                    self.index_map[z, y, x] = idx
 
                     # Create new entry for ancestor
                     ancestor[idx] = None
@@ -290,7 +273,7 @@ class Dendrogram(object):
                         branch.merge(removed)
 
                         # Update index map
-                        self.index_map = removed.add_footprint(self.index_map, idx)
+                        removed.add_footprint(self.index_map, idx)
 
                     for j in adjacent:
                         ancestor[j] = idx
@@ -298,8 +281,8 @@ class Dendrogram(object):
                             if ancestor[a] == j:
                                 ancestor[a] = idx
 
-        if verbose and not i % 10000 == 0:
-            print "%i..." % i
+        if verbose and not count % 10000 == 0:
+            print "%i..." % count
 
         # Remove orphan leaves that aren't large enough
         remove = []
@@ -322,9 +305,9 @@ class Dendrogram(object):
         for idx in items:
             item = items[idx]
             if type(item) == Leaf:
-                self.item_type_map = item.add_footprint(self.item_type_map, 2)
+                item.add_footprint(self.item_type_map, 2)
             else:
-                self.item_type_map = item.add_footprint(self.item_type_map, 1, recursive=False)
+                item.add_footprint(self.item_type_map, 1, recursive=False)
 
         # Re-cast to 2D if original dataset was 2D
         if self.n_dim == 2:
@@ -385,19 +368,19 @@ class Dendrogram(object):
 
 
         # Create arrays with pixel positions
-        x = np.arange(self.data.shape[2], dtype=np.int32)
-        y = np.arange(self.data.shape[1], dtype=np.int32)
-        z = np.arange(self.data.shape[0], dtype=np.int32)
-        X, Y, Z = meshgrid_nd(x, y, z)
+        coords = np.array(np.unravel_index( np.arange(self.data.size), self.data.shape))
+        coords = coords.transpose().reshape( self.data.shape + (3,))
+        # Now coords has the same shape as data, and each entry is a (z,y,x) coordinate tuple
 
         tree = parse_newick(f['newick'].value)
 
         def construct_tree(d):
             items = []
             for idx in d:
-                x = X[self.index_map == idx]
-                y = Y[self.index_map == idx]
-                z = Z[self.index_map == idx]
+                item_coords = coords[self.index_map == idx]
+                x = item_coords[:,2]
+                y = item_coords[:,1]
+                z = item_coords[:,0]
                 f = self.data[self.index_map == idx]
                 if type(d[idx]) == tuple:
                     sub_items = construct_tree(d[idx][0])
