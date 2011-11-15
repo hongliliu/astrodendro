@@ -42,19 +42,8 @@ class Dendrogram(object):
         if len(args) == 1:
             self._compute(*args, **kwargs)
 
-        self._reset_idx()
-
-    def _reset_idx(self):
-        self._idx_counter = 0
-
-    def _next_idx(self):
-        self._idx_counter += 1
-        return self._idx_counter
 
     def _compute(self, data, minimum_flux=-np.inf, minimum_npix=0, minimum_delta=0, verbose=True):
-
-        # Reset ID counter
-        self._reset_idx()
 
         # Initialize list of ancestors
         ancestor = {}
@@ -93,6 +82,10 @@ class Dendrogram(object):
 
         for i in np.argsort(flux_values)[::-1]:
             
+            def next_idx():
+                return i+1
+                # Generate IDs index i. We add one to avoid ID 0
+            
             flux = flux_values[i]
             coord = coords[i]
             z,y,x = coord
@@ -123,7 +116,7 @@ class Dendrogram(object):
             if n_adjacent == 0:  # Create new leaf
 
                 # Set absolute index of the new element
-                idx = self._next_idx()
+                idx = next_idx()
 
                 # Create leaf
                 leaf = Leaf(x, y, z, flux, idx=idx)
@@ -254,7 +247,7 @@ class Dendrogram(object):
                 else:
 
                     # Set absolute index of the new element
-                    idx = self._next_idx()
+                    idx = next_idx()
 
                     # Create branch
                     branch = Branch([items[j] for j in adjacent], \
