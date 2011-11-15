@@ -9,9 +9,6 @@ class Leaf(object):
         self.y = np.array([y], dtype=int)
         self.z = np.array([z], dtype=int)
         self.f = np.array([f], dtype=float)
-        self.xmin, self.xmax = x, x
-        self.ymin, self.ymax = y, y
-        self.zmin, self.zmax = z, z
         self.fmin, self.fmax = f, f
         self.idx = idx
         self.parent = None
@@ -28,9 +25,6 @@ class Leaf(object):
         self.y = np.hstack([self.y, y])
         self.z = np.hstack([self.z, z])
         self.f = np.hstack([self.f, f])
-        self.xmin, self.xmax = min(x, self.xmin), max(x, self.xmax)
-        self.ymin, self.ymax = min(y, self.ymin), max(y, self.ymax)
-        self.zmin, self.zmax = min(z, self.zmin), max(z, self.zmax)
         self.fmin, self.fmax = min(f, self.fmin), max(f, self.fmax)
 
     def merge(self, leaf):
@@ -38,9 +32,6 @@ class Leaf(object):
         self.y = np.hstack([self.y, leaf.y])
         self.z = np.hstack([self.z, leaf.z])
         self.f = np.hstack([self.f, leaf.f])
-        self.xmin, self.xmax = min(np.min(leaf.x), self.xmin), max(np.max(leaf.x), self.xmax)
-        self.ymin, self.ymax = min(np.min(leaf.y), self.ymin), max(np.max(leaf.y), self.ymax)
-        self.zmin, self.zmax = min(np.min(leaf.z), self.zmin), max(np.max(leaf.z), self.zmax)
         self.fmin, self.fmax = min(np.min(leaf.f), self.fmin), max(np.max(leaf.f), self.fmax)
 
     def add_footprint(self, image, level):
