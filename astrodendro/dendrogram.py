@@ -75,7 +75,7 @@ class Dendrogram(object):
         # Create a list of all points in the cube above minimum_flux
         keep = self.data.ravel() > minimum_flux
         flux_values = self.data.ravel()[keep]
-        coords = np.array(np.unravel_index( np.arange(nz*ny*nx)[keep] , self.data.shape)).transpose()
+        coords = np.array(np.unravel_index( np.arange(self.data.size)[keep] , self.data.shape)).transpose()
         
         if verbose:
             print "Number of points above minimum: %i" % len(flux_values)
@@ -106,6 +106,9 @@ class Dendrogram(object):
             count += 1
 
             # Check if point is adjacent to any leaf
+            # We don't worry about the edges, because overflow or underflow in 
+            # any one dimension will always land on an extra "padding" cell 
+            # with value zero added above when index_map was created
             indices_adjacent = [(z,y,x-1),(z,y,x+1),(z,y-1,x),(z,y+1,x),(z-1,y,x),(z+1,y,x)]
             adjacent = [self.index_map[c] for c in indices_adjacent if self.index_map[c] != 0]
             
@@ -375,19 +378,19 @@ class Dendrogram(object):
 
 
         # Create arrays with pixel positions
-        x = np.arange(self.data.shape[2], dtype=np.int32)
-        y = np.arange(self.data.shape[1], dtype=np.int32)
-        z = np.arange(self.data.shape[0], dtype=np.int32)
-        X, Y, Z = meshgrid_nd(x, y, z)
+        coords = np.array(np.unravel_index( np.arange(self.data.size), self.data.shape))
+        coords = coords.transpose().reshape( self.data.shape + (3,))
+        # Now coords has the same shape as data, and each entry is a (z,y,x) coordinate tuple
 
         tree = parse_newick(f['newick'].value)
 
         def construct_tree(d):
             items = []
             for idx in d:
-                x = X[self.index_map == idx]
-                y = Y[self.index_map == idx]
-                z = Z[self.index_map == idx]
+                item_coords = coords[self.index_map == idx]
+                x = item_coords[:,2]
+                y = item_coords[:,1]
+                z = item_coords[:,0]
                 f = self.data[self.index_map == idx]
                 if type(d[idx]) == tuple:
                     sub_items = construct_tree(d[idx][0])
