@@ -163,9 +163,7 @@ class Dendrogram(object):
                 for idx in merge:
                     adjacent.remove(idx)
 
-                # If there is only one item left, then if it is a leaf, add to the
-                # list to merge, and if it is a branch then add the merges to the
-                # branch.
+                # Now, how many significant adjacent items are left?
 
                 if len(adjacent) == 0:
 
@@ -195,54 +193,32 @@ class Dendrogram(object):
                         removed.add_footprint(self.index_map, idx)
 
                 elif len(adjacent) == 1:
+                    
+                    # There is one significant adjacent leaf/branch left.
+                    # Add the point under consideration and all insignificant
+                    # leaves in 'merge' to the adjacent leaf/branch
 
-                    if type(items[adjacent[0]]) == Leaf:
+                    idx = adjacent[0]
+                    item = items[idx]  # Could be a leaf or a branch
 
-                        idx = adjacent[0]
-                        leaf = items[idx]
+                    # Add current point to the leaf/branch
+                    item.add_point(x, y, z, flux)
 
-                        # Add current point to the leaf
-                        leaf.add_point(x, y, z, flux)
+                    # Set absolute index of pixel in index map
+                    self.index_map[z, y, x] = idx
 
-                        # Set absolute index of pixel in index map
-                        self.index_map[z, y, x] = idx
+                    for i in merge:
 
-                        for i in merge:
+                        # print "Merging leaf %i onto leaf/branch %i" % (i, idx)
 
-                            # print "Merging leaf %i onto leaf %i" % (i, idx)
+                        # Remove leaf
+                        removed = items.pop(i)
 
-                            # Remove leaf
-                            removed = items.pop(i)
+                        # Merge insignificant leaves onto the leftover leaf/branch
+                        item.merge(removed)
 
-                            # Merge old leaf onto reference leaf
-                            leaf.merge(removed)
-
-                            # Update index map
-                            removed.add_footprint(self.index_map, idx)
-
-                    else:
-
-                        idx = adjacent[0]
-                        branch = items[idx]
-
-                        # Add current point to the branch
-                        branch.add_point(x, y, z, flux)
-
-                        # Set absolute index of pixel in index map
-                        self.index_map[z, y, x] = idx
-
-                        for i in merge:
-
-                            # print "Merging leaf %i onto branch %i" % (i, idx)
-
-                            # Remove leaf
-                            removed = items.pop(i)
-
-                            # Merge old leaf onto reference leaf
-                            branch.merge(removed)
-
-                            # Update index map
-                            removed.add_footprint(self.index_map, idx)
+                        # Update index map
+                        removed.add_footprint(self.index_map, idx)
 
                 else:
 
