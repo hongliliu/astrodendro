@@ -359,10 +359,22 @@ class Dendrogram(object):
                 z = item_coords[:,0]
                 f = self.data[self.index_map == idx]
                 if type(d[idx]) == tuple:
-                    sub_items = construct_tree(d[idx][0])
+                    sub_items_repr = d[idx][0] # Parsed representation of sub items
+                    sub_items = construct_tree(sub_items_repr)
                     b = Branch(sub_items, x[0], y[0], z[0], f[0], idx=idx)
                     for i in range(1, len(x)):
                         b.add_point(x[i], y[i], z[i], f[i])
+                    # Correct merge levels - complicated because of the
+                    # order in which we are building the tree.
+                    # What we do is look at the heights of this branch's
+                    # 1st child as stored in the newick representation, and then
+                    # work backwards to compute the merge level of this branch
+                    first_child_repr = sub_items_repr.itervalues().next()
+                    if type(first_child_repr) == tuple:
+                        height = first_child_repr[1]
+                    else:
+                        height = first_child_repr
+                    b.merge_level = b.items[0].fmax - height
                     items.append(b)
                 else:
                     l = Leaf(x[0], y[0], z[0], f[0], idx=idx)

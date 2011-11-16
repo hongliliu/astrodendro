@@ -13,11 +13,15 @@ class Leaf(object):
         self.idx = idx
         self.parent = None
 
-    def __getattr__(self, attribute):
-        if attribute == 'npix':
-            return len(self.x)
+    @property
+    def npix(self):
+        return len(self.x)
+    @property
+    def height(self):
+        if self.parent == None:
+            return self.fmax - self.fmin
         else:
-            raise Exception("Attribute not found: %s" % attribute)
+            return self.fmax - self.parent.merge_level
 
     def add_point(self, x, y, z, f):
         "Add point to current leaf"
@@ -47,7 +51,7 @@ class Leaf(object):
         return x
 
     def to_newick(self):
-        return "%i:%.3f" % (self.idx, self.fmax - self.fmin)
+        return "%i:%.3f" % (self.idx, self.height)
 
     def get_peak(self):
         imax = np.argmax(self.f)
@@ -57,19 +61,18 @@ class Leaf(object):
 class Branch(Leaf):
 
     def __init__(self, items, x, y, z, f, idx=None):
+        self.merge_level = f # Record the exact flux level that triggered creation of this branch
         self.items = items
         for item in items:
             item.parent = self
         Leaf.__init__(self, x, y, z, f, idx=idx)
 
-    def __getattr__(self, attribute):
-        if attribute == 'npix':
-            npix = len(self.x)
-            for item in self.items:
-                npix += item.npix
-            return npix
-        else:
-            raise AttributeError("Attribute not found: %s" % attribute)
+    @property
+    def npix(self):
+        npix = len(self.x)
+        for item in self.items:
+            npix += item.npix
+        return npix
 
     def add_footprint(self, image, level, recursive=True):
         if recursive:
@@ -78,7 +81,7 @@ class Branch(Leaf):
         return Leaf.add_footprint(self, image, level)
 
     def plot_dendrogram(self, plot, parent_y_level):
-        y_level = self.fmin * plot.flux_mult
+        y_level = self.merge_level * plot.flux_mult
         # Plot child branches & leaves, recording the x values at which they are plotted:
         xvalues = [item.plot_dendrogram(plot, y_level) for item in self.items]
         mean_x = int(sum(xvalues) / len(xvalues))
@@ -92,7 +95,7 @@ class Branch(Leaf):
         newick_items = []
         for item in self.items:
             newick_items.append(item.to_newick())
-        return "(%s)%s:%.3f" % (string.join(newick_items, ','), self.idx, self.fmax - self.fmin)
+        return "(%s)%s:%.3f" % (string.join(newick_items, ','), self.idx, self.height)
 
     def get_leaves(self):
         leaves = []
