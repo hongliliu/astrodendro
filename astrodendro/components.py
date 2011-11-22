@@ -17,6 +17,9 @@ class Leaf(object):
     def npix(self):
         return len(self.x)
     @property
+    def f_sum(self):
+        return np.sum(self.f)
+    @property
     def height(self):
         if self.parent == None:
             return self.fmax - self.fmin
@@ -69,10 +72,18 @@ class Branch(Leaf):
 
     @property
     def npix(self):
-        npix = len(self.x)
-        for item in self.items:
-            npix += item.npix
-        return npix
+        return len(self.x) + self.npix_children
+    @property
+    def npix_children(self):
+        return np.sum([item.npix for item in self.items])
+    
+    @property
+    def f_sum(self):
+        return np.sum(self.f) + self.f_sum_children
+    @property
+    def f_sum_children(self):
+        return np.sum([item.f_sum for item in self.items])
+
 
     def add_footprint(self, image, level, recursive=True):
         if recursive:
