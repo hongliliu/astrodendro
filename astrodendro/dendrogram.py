@@ -393,7 +393,7 @@ class Dendrogram(object):
             self.index_map = self.index_map[0, :, :]
             self.item_type_map = self.item_type_map[0, :, :]
     
-    def plot(self, line_width = 1, spacing = 5):
+    def plot(self, line_width = 1, spacing = 5, interactive_plot = True):
         axis = matplotlib.pylab.gca()
         plot = self.trunk.plot_dendrogram(line_width, spacing)
         axis.set_xlim([plot.xmin, plot.xmax]) 
@@ -406,4 +406,5 @@ class Dendrogram(object):
             axis.set_yticklabels([])
         line_collection = matplotlib.collections.LineCollection(plot.lines, linewidths = line_width)
         axis.add_collection(line_collection)
-        matplotlib.pylab.draw_if_interactive()
+        if interactive_plot:
+            matplotlib.pylab.draw_if_interactive()
