@@ -5,7 +5,7 @@ class Leaf(object):
 
     def __init__(self, coord, f, idx=None):
         self.coords = [coord]
-        self.f = np.array([f], dtype=float)
+        self.f = [f]
         self.fmin, self.fmax = f, f
         self.idx = idx
         self.parent = None
@@ -15,7 +15,7 @@ class Leaf(object):
         return len(self.f)
     @property
     def f_sum(self):
-        return np.sum(self.f)
+        return sum(self.f)
     @property
     def height(self):
         if self.parent == None:
@@ -26,13 +26,13 @@ class Leaf(object):
     def add_point(self, coord, f):
         "Add point to current leaf"
         self.coords.append(coord)
-        self.f = np.hstack([self.f, f])
+        self.f.append(f)
         self.fmin, self.fmax = min(f, self.fmin), max(f, self.fmax)
 
     def merge(self, leaf):
         self.coords.extend(leaf.coords)
-        self.f = np.hstack([self.f, leaf.f])
-        self.fmin, self.fmax = min(np.min(leaf.f), self.fmin), max(np.max(leaf.f), self.fmax)
+        self.f.extend(leaf.f)
+        self.fmin, self.fmax = min(leaf.fmin, self.fmin), max(leaf.fmax, self.fmax)
 
     def add_footprint(self, image, level):
         "Fill in a map which shows the depth of the tree"
