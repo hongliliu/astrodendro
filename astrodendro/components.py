@@ -1,24 +1,21 @@
 import string
 import numpy as np
 
-
 class Leaf(object):
 
-    def __init__(self, x, y, z, f, idx=None):
-        self.x = np.array([x], dtype=int)
-        self.y = np.array([y], dtype=int)
-        self.z = np.array([z], dtype=int)
-        self.f = np.array([f], dtype=float)
+    def __init__(self, coord, f, idx=None):
+        self.coords = [coord]
+        self.f = [f]
         self.fmin, self.fmax = f, f
         self.idx = idx
         self.parent = None
 
     @property
     def npix(self):
-        return len(self.x)
+        return len(self.f)
     @property
     def f_sum(self):
-        return np.sum(self.f)
+        return sum(self.f)
     @property
     def height(self):
         if self.parent == None:
@@ -26,25 +23,21 @@ class Leaf(object):
         else:
             return self.fmax - self.parent.merge_level
 
-    def add_point(self, x, y, z, f):
+    def add_point(self, coord, f):
         "Add point to current leaf"
-        self.x = np.hstack([self.x, x])
-        self.y = np.hstack([self.y, y])
-        self.z = np.hstack([self.z, z])
-        self.f = np.hstack([self.f, f])
+        self.coords.append(coord)
+        self.f.append(f)
         self.fmin, self.fmax = min(f, self.fmin), max(f, self.fmax)
 
     def merge(self, leaf):
-        self.x = np.hstack([self.x, leaf.x])
-        self.y = np.hstack([self.y, leaf.y])
-        self.z = np.hstack([self.z, leaf.z])
-        self.f = np.hstack([self.f, leaf.f])
-        self.fmin, self.fmax = min(np.min(leaf.f), self.fmin), max(np.max(leaf.f), self.fmax)
+        self.coords.extend(leaf.coords)
+        self.f.extend(leaf.f)
+        self.fmin, self.fmax = min(leaf.fmin, self.fmin), max(leaf.fmax, self.fmax)
 
     def add_footprint(self, image, level):
         "Fill in a map which shows the depth of the tree"
-        image[self.z, self.y, self.x] = level
-        return image
+        for c in self.coords:
+            image[c] = level
 
     def plot_dendrogram(self, plot, parent_y_level):
         # Draw the vertical line for this leaf:
@@ -58,21 +51,21 @@ class Leaf(object):
 
     def get_peak(self):
         imax = np.argmax(self.f)
-        return self.x[imax], self.y[imax], self.z[imax], self.f[imax]
+        return self.coords[imax], self.f[imax]
 
 
 class Branch(Leaf):
 
-    def __init__(self, items, x, y, z, f, idx=None):
+    def __init__(self, items, coord, f, idx=None):
         self.merge_level = f # Record the exact flux level that triggered creation of this branch
         self.items = items
         for item in items:
             item.parent = self
-        Leaf.__init__(self, x, y, z, f, idx=idx)
+        Leaf.__init__(self, coord, f, idx=idx)
 
     @property
     def npix(self):
-        return len(self.x) + self.npix_children
+        return len(self.f) + self.npix_children
     @property
     def npix_children(self):
         return np.sum([item.npix for item in self.items])
@@ -88,8 +81,8 @@ class Branch(Leaf):
     def add_footprint(self, image, level, recursive=True):
         if recursive:
             for item in self.items:
-                image = item.add_footprint(image, level + 1)
-        return Leaf.add_footprint(self, image, level)
+                item.add_footprint(image, level + 1)
+        Leaf.add_footprint(self, image, level)
 
     def plot_dendrogram(self, plot, parent_y_level):
         y_level = self.merge_level * plot.flux_mult
