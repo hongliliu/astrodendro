@@ -322,38 +322,23 @@ class Dendrogram(object):
 
         self.n_dim = f.attrs['n_dim']
 
-        # If array is 2D, reshape to 3D
-        if self.n_dim == 2:
-            self.data = f['data'].value.reshape(1, f['data'].shape[0], f['data'].shape[1])
-            self.index_map = f['index_map'].value.reshape(1, f['data'].shape[0], f['data'].shape[1])
-            self.item_type_map = f['item_type_map'].value.reshape(1, f['data'].shape[0], f['data'].shape[1])
-        else:
-            self.data = f['data'].value
-            self.index_map = f['index_map'].value
-            self.item_type_map = f['item_type_map'].value
-
-
-        # Create arrays with pixel positions
-        coords = np.array(np.unravel_index( np.arange(self.data.size), self.data.shape))
-        coords = coords.transpose().reshape( self.data.shape + (3,))
-        # Now coords has the same shape as data, and each entry is a (z,y,x) coordinate tuple
+        self.data = f['data'].value
+        self.index_map = f['index_map'].value
+        self.item_type_map = f['item_type_map'].value
 
         tree = parse_newick(f['newick'].value)
 
         def construct_tree(d):
             items = []
             for idx in d:
-                item_coords = coords[self.index_map == idx]
-                x = item_coords[:,2]
-                y = item_coords[:,1]
-                z = item_coords[:,0]
+                item_coords = zip(*(np.where(self.index_map == idx)))
                 f = self.data[self.index_map == idx]
                 if type(d[idx]) == tuple:
                     sub_items_repr = d[idx][0] # Parsed representation of sub items
                     sub_items = construct_tree(sub_items_repr)
-                    b = Branch(sub_items, x[0], y[0], z[0], f[0], idx=idx)
-                    for i in range(1, len(x)):
-                        b.add_point(x[i], y[i], z[i], f[i])
+                    b = Branch(sub_items, item_coords[0], f[0], idx=idx)
+                    for i in range(1, len(f)):
+                        b.add_point(item_coords[i], f[i])
                     # Correct merge levels - complicated because of the
                     # order in which we are building the tree.
                     # What we do is look at the heights of this branch's
@@ -367,9 +352,9 @@ class Dendrogram(object):
                     b.merge_level = b.items[0].fmax - height
                     items.append(b)
                 else:
-                    l = Leaf(x[0], y[0], z[0], f[0], idx=idx)
-                    for i in range(1, len(x)):
-                        l.add_point(x[i], y[i], z[i], f[i])
+                    l = Leaf(item_coords[0], f[0], idx=idx)
+                    for i in range(1, len(f)):
+                        l.add_point(item_coords[i], f[i])
                     items.append(l)
             return items
 
