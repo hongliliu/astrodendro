@@ -78,6 +78,17 @@ There are several options that can be used when initializing a
 For example:
 
     d = Dendrogram(array, minimum_flux=1.2, minimum_npix=10, minimum_delta=0.1)
+    
+Plotting
+========
+
+Plotting a Dendrogram is easy when this module is used within IPython
+in pylab mode:
+
+```python
+d = Dendrogram(array)
+d.plot()
+```
 
 Writing
 =======
