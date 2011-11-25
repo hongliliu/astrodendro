@@ -13,7 +13,7 @@ Installing
 
 To install the ``astrodendro`` module, simply do:
 
-    python setup.py install
+    pip install git+git://github.com/bradenmacdonald/astrodendro.git#egg=astrodendro
 
 Using
 =====
@@ -49,14 +49,19 @@ Sub-structures of branches can then be retrieved as a list with the ``items`` at
     >>> d.trunk[0].items[0].items
     [<astrodendro.components.Leaf object at 0x10279b150>, <astrodendro.components.Branch object at 0x10279b190>]
 
-The pixel positions and fluxes of all the pixels in a leaf can then be retrieved with the ``x``, ``y``, and ``f`` attributes:
+The pixel positions and fluxes of all the pixels in a leaf can then be retrieved with the ``coords`` and ``f`` attributes:
 
-    >>> d.trunk[0].items[0].items[0].x
-    array([60, 60])
-    >>> d.trunk[0].items[0].items[0].y
-    array([16, 15])
+    >>> In [7]: d.trunk[0].items[0].coords
+    [(230, 50, 75),
+    (230, 50, 74),
+    (229, 50, 74),
+    (229, 51, 74)]
     >>> d.trunk[0].items[0].items[0].f
-    array([-0.08147667, -0.08692939])
+    [1.4287809,
+    1.4096074,
+    1.4536692,
+    1.4319911,
+    1.5811987]
 
 It is also possible to directly retrieve all the leaves:
 
