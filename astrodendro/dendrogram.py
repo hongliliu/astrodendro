@@ -61,9 +61,8 @@ class Dendrogram(object):
         # This permits an optimization below when finding adjacent items
         self.index_map = np.zeros(np.add(self.data.shape, 1), dtype=np.int32)
 
-        # Dictionary of currently-defined items and list of ancestors:
+        # Dictionary of currently-defined items:
         items = {}
-        ancestor = {}
         
         # Define a list of offsets we add to any coordinate to get the coords
         # of all neighbouring pixels
@@ -88,7 +87,7 @@ class Dendrogram(object):
             
             # Print stats
             if verbose and count % 10000 == 0:
-                print "%i..." % count
+                 "%i..." % count
             count += 1
 
             # Check if point is adjacent to any leaf
@@ -99,9 +98,7 @@ class Dendrogram(object):
             adjacent = [self.index_map[c] for c in indices_adjacent if self.index_map[c] != 0]
             
             # Replace adjacent elements by its ancestor
-            for j in range(len(adjacent)):
-                if ancestor[adjacent[j]] is not None:
-                    adjacent[j] = ancestor[adjacent[j]]
+            adjacent = [ items[a].ancestor.idx for a in adjacent]
 
             # Remove duplicates
             adjacent = list(set(adjacent))
@@ -122,9 +119,6 @@ class Dendrogram(object):
 
                 # Set absolute index of pixel in index map
                 self.index_map[coord] = idx
-
-                # Create new entry for ancestor
-                ancestor[idx] = None
 
             elif n_adjacent == 1:  # Add to existing leaf or branch
 
@@ -231,9 +225,6 @@ class Dendrogram(object):
                     # Set absolute index of pixel in index map
                     self.index_map[coord] = idx
 
-                    # Create new entry for ancestor
-                    ancestor[idx] = None
-
                     for i in merge:
 
                         # print "Merging leaf %i onto branch %i" % (i, idx)
@@ -247,11 +238,6 @@ class Dendrogram(object):
                         # Update index map
                         removed.add_footprint(self.index_map, idx)
 
-                    for j in adjacent:
-                        ancestor[j] = idx
-                        for a in ancestor:
-                            if ancestor[a] == j:
-                                ancestor[a] = idx
 
         if verbose and not count % 10000 == 0:
             print "%i..." % count
@@ -268,9 +254,9 @@ class Dendrogram(object):
 
         # Create trunk from objects with no ancestors
         self.trunk = Trunk()
-        for idx in items:
-            if ancestor[idx] is None:
-                self.trunk.append(items[idx])
+        for item in items.itervalues():
+            if item.ancestor == item:
+                self.trunk.append(item)
 
         # Make map of leaves vs branches
         self.item_type_map = np.zeros(self.data.shape, dtype=np.uint8)

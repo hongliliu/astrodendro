@@ -22,6 +22,13 @@ class Leaf(object):
             return self.fmax - self.fmin
         else:
             return self.fmax - self.parent.merge_level
+    
+    @property
+    def ancestor(self):
+        if self.parent == None:
+            return self
+        else:
+            return self.parent.ancestor
 
     def add_point(self, coord, f):
         "Add point to current leaf"
