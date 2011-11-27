@@ -244,7 +244,8 @@ class Dendrogram(object):
 
         # Remove orphan leaves that aren't large enough
         remove = [idx for idx,item in items.iteritems()
-                  if type(item) == Leaf and (item.npix < minimum_npix or item.fmax - item.fmin < minimum_delta)]
+                  if item.parent is None and type(item) == Leaf
+                  and (item.npix < minimum_npix or item.fmax - item.fmin < minimum_delta)]
         for idx in remove:
             items.pop(idx)
             
@@ -252,9 +253,7 @@ class Dendrogram(object):
         self.items_dict = items
 
         # Create trunk from objects with no ancestors
-        self.trunk = [item for item in items.itervalues() if item.parent == None]
-        
-        print("items has {0} items; {1} branches, {2} leaves, {3} trunk items".format(len(items), len([i for i in items if type(items[i]) == Branch]), len([i for i in items if type(items[i]) == Leaf]), len(self.trunk))) 
+        self.trunk = [item for item in items.itervalues() if item.parent == None] 
 
     def get_leaves(self):
         return [i for i in self.items_dict.itervalues() if type(i) == Leaf]
