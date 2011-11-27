@@ -1,4 +1,3 @@
-import string
 import numpy as np
 
 class Leaf(object):
@@ -106,48 +105,8 @@ class Branch(Leaf):
         newick_items = []
         for item in self.items:
             newick_items.append(item.to_newick())
-        return "(%s)%s:%.3f" % (string.join(newick_items, ','), self.idx, self.height)
+        return "(%s)%s:%.3f" % (','.join(newick_items), self.idx, self.height)
 
-    def get_leaves(self):
-        leaves = []
-        for item in self.items:
-            if type(item) == Leaf:
-                leaves.append(item)
-            else:
-                leaves += item.get_leaves()
-        return leaves
-
-
-class Trunk(list):
-
-    def plot_dendrogram(self, line_width, spacing):
-        # Find the minimum flux among all root branches:
-        min_f = np.min([item.fmin for item in self])
-        # Set up variables needed for plotting:
-        plot = DendrogramPlotInfo(line_width, spacing, min_f)
-        # recursively generate the necessary lines:
-        for item in self:
-            item.plot_dendrogram(plot, plot.ymin)
-        # Add a bit of padding above & below the plot:
-        plot_vspace = (plot.ymax - plot.ymin) * 0.01
-        plot.ymin -= plot_vspace
-        plot.ymax += plot_vspace
-        return plot
-
-    def to_newick(self):
-        newick_items = []
-        for item in self:
-            newick_items.append(item.to_newick())
-        return "(%s);" % string.join(newick_items, ',')
-
-    def get_leaves(self):
-        leaves = []
-        for item in self:
-            if type(item) == Leaf:
-                leaves.append(item)
-            else:
-                leaves += item.get_leaves()
-        return leaves
 
 class DendrogramPlotInfo():
     def __init__(self, line_width, spacing, min_flux):

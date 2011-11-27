@@ -1,5 +1,6 @@
 import unittest
 from astrodendro import Dendrogram
+from astrodendro.components import Branch
 import numpy as np
 import os
 
@@ -33,19 +34,17 @@ class TestHDF5(unittest.TestCase):
         d2 = Dendrogram()
         d2.from_hdf5(self.test_filename)
         
-        self.assertEqual(len(d.get_leaves()), len(d2.get_leaves()))
+        self.assertEqual(len(d.items_dict), len(d2.items_dict))
         
         np.testing.assert_array_equal(d.data, d2.data) # Do we recover the data exactly?
                          
-        for leaf2 in d2.get_leaves():
-            matches = [leaf for leaf in d.get_leaves() if leaf.idx == leaf2.idx]
-            self.assertEqual(len(matches), 1)
-            leaf = matches[0]
-            self.assertItemsEqual(leaf.coords, leaf2.coords)
-            self.assertItemsEqual(leaf.f, leaf2.f)
-        
-        # TODO: Test that merge levels are preserved
-                
+        for idx in d2.items_dict:
+            item1, item2 = d.items_dict[idx], d2.items_dict[idx]
+            self.assertItemsEqual(item1.coords, item2.coords)
+            self.assertItemsEqual(item1.f, item2.f)
+            self.assertEqual(type(item1), type(item2))
+            if type(item2) == Branch:
+                self.assertEqual(item1.merge_level, item2.merge_level)        
 
 if __name__ == '__main__':
     unittest.main()

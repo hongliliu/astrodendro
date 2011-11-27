@@ -25,7 +25,7 @@
 
 import numpy as np
 
-from astrodendro.components import Trunk, Branch, Leaf
+from astrodendro.components import Branch, Leaf, DendrogramPlotInfo
 from astrodendro.newick import parse_newick
 try:
     import matplotlib
@@ -87,7 +87,7 @@ class Dendrogram(object):
             
             # Print stats
             if verbose and count % 10000 == 0:
-                 "%i..." % count
+                print("%i..." % count)
             count += 1
 
             # Check if point is adjacent to any leaf
@@ -243,35 +243,24 @@ class Dendrogram(object):
             print "%i..." % count
 
         # Remove orphan leaves that aren't large enough
-        remove = []
-        for idx in items:
-            item = items[idx]
-            if type(item) == Leaf:
-                if item.npix < minimum_npix or item.fmax - item.fmin < minimum_delta:
-                    remove.append(idx)
+        remove = [idx for idx,item in items.iteritems()
+                  if type(item) == Leaf and (item.npix < minimum_npix or item.fmax - item.fmin < minimum_delta)]
         for idx in remove:
             items.pop(idx)
+            
+        # Save a list of all items accessible by ID
+        self.items_dict = items
 
         # Create trunk from objects with no ancestors
-        self.trunk = Trunk()
-        for item in items.itervalues():
-            if item.ancestor == item:
-                self.trunk.append(item)
-
-        # Make map of leaves vs branches
-        self.item_type_map = np.zeros(self.data.shape, dtype=np.uint8)
-        for idx in items:
-            item = items[idx]
-            if type(item) == Leaf:
-                item.add_footprint(self.item_type_map, 2)
-            else:
-                item.add_footprint(self.item_type_map, 1, recursive=False)
+        self.trunk = [item for item in items.itervalues() if item.parent == None]
+        
+        print("items has {0} items; {1} branches, {2} leaves, {3} trunk items".format(len(items), len([i for i in items if type(items[i]) == Branch]), len([i for i in items if type(items[i]) == Leaf]), len(self.trunk))) 
 
     def get_leaves(self):
-        return self.trunk.get_leaves()
+        return [i for i in self.items_dict.itervalues() if type(i) == Leaf]
 
     def to_newick(self):
-        return self.trunk.to_newick()
+        return "(%s);" % ','.join([item.to_newick() for item in self.trunk])
 
     def to_hdf5(self, filename):
 
@@ -287,11 +276,20 @@ class Dendrogram(object):
         d.attrs['CLASS'] = 'IMAGE'
         d.attrs['IMAGE_VERSION'] = '1.2'
         d.attrs['IMAGE_MINMAXRANGE'] = [self.index_map.min(), self.index_map.max()]
+        
+        # Make map of leaves vs branches
+        item_type_map = np.zeros(self.data.shape, dtype=np.uint8)
+        for idx in self.items_dict:
+            item = self.items_dict[idx]
+            if type(item) == Leaf:
+                item.add_footprint(item_type_map, 2)
+            else:
+                item.add_footprint(item_type_map, 1, recursive=False)
 
-        d = f.create_dataset('item_type_map', data=self.item_type_map, compression=True)
+        d = f.create_dataset('item_type_map', data=item_type_map, compression=True)
         d.attrs['CLASS'] = 'IMAGE'
         d.attrs['IMAGE_VERSION'] = '1.2'
-        d.attrs['IMAGE_MINMAXRANGE'] = [self.item_type_map.min(), self.item_type_map.max()]
+        d.attrs['IMAGE_MINMAXRANGE'] = [item_type_map.min(), item_type_map.max()]
 
         d = f.create_dataset('data', data=self.data, compression=True)
         d.attrs['CLASS'] = 'IMAGE'
@@ -311,6 +309,7 @@ class Dendrogram(object):
         self.data = f['data'].value
         self.index_map = f['index_map'].value
         self.item_type_map = f['item_type_map'].value
+        self.items_dict = {}
 
         tree = parse_newick(f['newick'].value)
 
@@ -322,6 +321,8 @@ class Dendrogram(object):
                 if type(d[idx]) == tuple:
                     sub_items_repr = d[idx][0] # Parsed representation of sub items
                     sub_items = construct_tree(sub_items_repr)
+                    for i in sub_items:
+                        self.items_dict[i.idx] = i
                     b = Branch(sub_items, item_coords[0], f[0], idx=idx)
                     for i in range(1, len(f)):
                         b.add_point(item_coords[i], f[i])
@@ -336,27 +337,34 @@ class Dendrogram(object):
                     else:
                         height = first_child_repr
                     b.merge_level = b.items[0].fmax - height
+                    self.items_dict[idx] = b
                     items.append(b)
                 else:
                     l = Leaf(item_coords[0], f[0], idx=idx)
                     for i in range(1, len(f)):
                         l.add_point(item_coords[i], f[i])
                     items.append(l)
+                    self.items_dict[idx] = l
             return items
 
-        self.trunk = Trunk()
-        for item in construct_tree(tree):
-            self.trunk.append(item)
+        self.trunk = construct_tree(tree)
 
-        # Re-cast to 2D if original dataset was 2D
-        if self.n_dim == 2:
-            self.data = self.data[0, :, :]
-            self.index_map = self.index_map[0, :, :]
-            self.item_type_map = self.item_type_map[0, :, :]
     
     def plot(self, line_width = 1, spacing = 5, interactive_plot = True):
         axis = matplotlib.pylab.gca()
-        plot = self.trunk.plot_dendrogram(line_width, spacing)
+
+        # Find the minimum flux among all root branches:
+        min_f = np.min([item.fmin for item in self.trunk])
+        # Set up variables needed for plotting:
+        plot = DendrogramPlotInfo(line_width, spacing, min_f)
+        # recursively generate the necessary lines:
+        for item in self.trunk:
+            item.plot_dendrogram(plot, plot.ymin)
+        # Add a bit of padding above & below the plot:
+        plot_vspace = (plot.ymax - plot.ymin) * 0.01
+        plot.ymin -= plot_vspace
+        plot.ymax += plot_vspace
+        
         axis.set_xlim([plot.xmin, plot.xmax]) 
         axis.set_ylim([plot.ymin, plot.ymax])
         axis.set_xticks([])
