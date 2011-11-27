@@ -1,5 +1,9 @@
 import numpy as np
 
+def item_sort_key(item):
+    " Given a Branch or Leaf, this returns a key used to sort them for plotting "
+    return item.height # TODO: test recursive-fmax, npix, height, f_sum
+
 class Leaf(object):
 
     def __init__(self, coord, f, idx=None):
@@ -64,7 +68,7 @@ class Branch(Leaf):
 
     def __init__(self, items, coord, f, idx=None):
         self.merge_level = f # Record the exact flux level that triggered creation of this branch
-        self.items = items
+        self.items = sorted(items, key=item_sort_key)
         for item in items:
             item.parent = self
         Leaf.__init__(self, coord, f, idx=idx)

@@ -25,7 +25,7 @@
 
 import numpy as np
 
-from astrodendro.components import Branch, Leaf, DendrogramPlotInfo
+from astrodendro.components import Branch, Leaf, DendrogramPlotInfo, item_sort_key
 from astrodendro.newick import parse_newick
 try:
     import matplotlib
@@ -253,7 +253,8 @@ class Dendrogram(object):
         self.items_dict = items
 
         # Create trunk from objects with no ancestors
-        self.trunk = [item for item in items.itervalues() if item.parent == None] 
+        self.trunk = [item for item in items.itervalues() if item.parent == None]
+        self.trunk.sort(key=item_sort_key) 
 
     def get_leaves(self):
         return [i for i in self.items_dict.itervalues() if type(i) == Leaf]
@@ -335,7 +336,7 @@ class Dendrogram(object):
                         height = first_child_repr[1]
                     else:
                         height = first_child_repr
-                    b.merge_level = b.items[0].fmax - height
+                    b.merge_level = sub_items[0].fmax - height
                     self.items_dict[idx] = b
                     items.append(b)
                 else:
@@ -346,8 +347,8 @@ class Dendrogram(object):
                     self.items_dict[idx] = l
             return items
 
-        self.trunk = construct_tree(tree)
-
+        self.trunk = construct_tree(tree)#sorted(construct_tree(tree), key=item_sort_key)
+        # TODO
     
     def plot(self, line_width = 1, spacing = 5, interactive_plot = True):
         axis = matplotlib.pylab.gca()
