@@ -211,7 +211,7 @@ class DendrogramPlot():
             self.plot = plot
         def highlight(self, item):
             """
-            Highlight the given item.
+            Highlight the given item (a Branch or Leaf object)
             Item can be None, which will remove highlighting.
             Returns True if the highlight changed at all.
             """
