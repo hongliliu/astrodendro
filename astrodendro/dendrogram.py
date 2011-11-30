@@ -350,30 +350,20 @@ class Dendrogram(object):
         self.trunk = construct_tree(tree)#sorted(construct_tree(tree), key=item_sort_key)
         # TODO
     
-    def plot(self, line_width = 1, spacing = 5):
+    def plot(self):
         """
         Plot a Dendrogram using matplotlib.
-        Works with IPython's pylab mode, so you can just type: dendrogram.plot() 
+        Works with IPython's pylab mode, so you can just type: dendrogram.plot()
+        Returns a DendrogramPlot object 
         """
-        plot = self.make_plot(line_width, spacing)
-        plot.add_to_axes(matplotlib.pylab.gca())
+        axes = matplotlib.pylab.gca()
+        plot = self.make_plot(axes)
         matplotlib.pylab.draw_if_interactive()
+        return plot
 
-    def make_plot(self, line_width=1, spacing=5):
+    def make_plot(self, axes, color='blue', line_width=1, spacing=5):
         """
         Returns a DendrogramPlot object that can draw a matplotlib figure
         The DendrogramPlot object also has a useful get_item_at(x,y) method.
         """
-        # Find the minimum flux among all root branches:
-        min_f = np.min([item.fmin for item in self.trunk])
-        # Set up variables needed for plotting:
-        plot = DendrogramPlot(line_width, spacing, min_f)
-        # recursively generate the necessary lines:
-        for item in self.trunk:
-            plot._plot_item(item, plot.lines)
-        # Add a bit of padding above & below the plot:
-        plot_vspace = (plot.ymax - plot.ymin) * 0.01
-        plot.ymin -= plot_vspace
-        plot.ymax += plot_vspace
-        
-        return plot
+        return DendrogramPlot(self.trunk, axes=axes, color=color, line_width=line_width, spacing=spacing)

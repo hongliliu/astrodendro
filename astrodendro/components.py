@@ -96,7 +96,7 @@ class Branch(Leaf):
 
 
 class DendrogramPlot():
-    def __init__(self, line_width, spacing, min_flux):
+    def __init__(self, trunk, axes=None, color='blue', line_width=1, spacing=5):
         self.line_width = line_width
         self.spacing = spacing
         self.x_increment = line_width + spacing
@@ -105,42 +105,52 @@ class DendrogramPlot():
         self.lines = [] # list of lists of (x,y) tuples
         
         # the xmin, xmax, ymin, ymax properties give the size of the canvas onto which the lines are drawn
-        self.ymin = min_flux * self.flux_mult
-        self.ymax = self.ymin
+        self.ymin = np.min([item.fmin for item in trunk]) * self.flux_mult
+        self.ymax = self.ymin # ymax will get calculated during _plot_item calls
         # Create a dictionary to find what item is found at a given point.
         # Keys to this dictionary are (x1,x2,y1,y2) tuples defining the rect
         # in which the Branch or Leaf is plotted. Values in the dictionary
         # are references to the actual Branch or Leaf
         self._item_map = {}
         self._x_map = {} # Map between item idx and the value of cur_x when the item was created
-        # The list of colours used in plotting; first colour is used for all 
-        # non-highlighted lines
-        self.colours = ['blue', 'red', 'green', 'orange'] 
-        # Create a list of _Highlight info objects representing "highlighted" items
-        self.highlights = [self._HighlightInfo(self.colours[i], line_width) for i in range(1,len(self.colours))]
+
+        # Do the plotting recursively:
+        for item in trunk:
+            self._plot_item(item, self.lines)
+        # Add a bit of padding above & below the plot:
+        vspace = (self.ymax - self.ymin) * 0.01
+        self.ymin -= vspace
+        self.ymax += vspace
+        
+        # Now attach to the given matplotlib axes:
+        self.axes = axes
+        if axes:
+            axes.set_xlim([self.xmin, self.xmax]) 
+            axes.set_ylim([self.ymin, self.ymax])
+            axes.set_xticks([])
+            axes.set_xticklabels([])
+            if self.line_width > 1:
+                # Y values will not be correct, so hide them:
+                axes.set_yticks([])
+                axes.set_yticklabels([])
+            line_collection = mpl.collections.LineCollection(self.lines, linewidths = self.line_width)
+            line_collection.set_color(color)
+            axes.add_collection(line_collection)
+    
     @property
     def xmin(self): return 0 - self.x_increment
     @property
     def xmax(self): return self._next_x + self.x_increment
+    
     def item_at(self,x,y):
         """ Returns the item at the given point on the plot, or None """
+        if x is None or y is None: # a convenience check that makes None an acceptable parameter
+            return None
         for (xmin,xmax,ymin,ymax), item in self._item_map.iteritems():
             if x >= xmin and x <= xmax and y > ymin and y < ymax:
                 return item
-    def add_to_axes(self, axes):
-        """ Add this plot to the given matplotlib Axes instance """
-        axes.set_xlim([self.xmin, self.xmax]) 
-        axes.set_ylim([self.ymin, self.ymax])
-        axes.set_xticks([])
-        axes.set_xticklabels([])
-        if self.line_width > 1:
-            # Y values will not be correct, so hide them:
-            axes.set_yticks([])
-            axes.set_yticklabels([])
-        line_collection = mpl.collections.LineCollection(self.lines, linewidths = self.line_width)
-        axes.add_collection(line_collection)
-        for h in self.highlights:
-            axes.add_collection(h.line_collection)
+        return None
+    
     def _plot_item(self, item, line_list):
         if item.parent:
             parent_y_level = item.parent.merge_level*self.flux_mult
@@ -178,31 +188,43 @@ class DendrogramPlot():
                 self._item_map[(xvalues[0], xvalues[-1], parent_y_level,y_level)] = item
                 self._x_map[item.idx] = xvalues[0]
             return mean_x
-            
-    def highlight(self, highlight_index=0, item=None):
-        """
-        Update the plot to highlight a particular item
-        Up to three different items can be highlighted and will be drawn in
-        different colours, one colour/item for each highlight_index.
-        Pass item=None to remove a highlight at any index
-        """
-        highlight_info = self.highlights[highlight_index]
-        if item:
-            if highlight_info.item != item:
-                item_lines = []
-                self._plot_item(item, item_lines)
-                highlight_info.set_to_item(item, item_lines)
-        else:
-            highlight_info.clear()
     
-    class _HighlightInfo:
-        def __init__(self, color, line_width):
+    def create_highlighter(self, color='red', alpha=1):
+        """
+        Set up a plot for interactive highlighting.
+        This will return a Highlighter object with a highlight(item)
+        method; simply call that method to highlight any given item in the 
+        color specified when the highlighter was created.
+        """
+        h = self._Highlighter(self, color, alpha, self.line_width+1)
+        self.axes.add_collection(h.line_collection)
+        return h
+    
+    
+    class _Highlighter:
+        def __init__(self, plot, color, alpha, line_width):
+            """ Do not call this yourself, but rather use plot.create_highlighter() """
             self.item = None
             self.line_collection = mpl.collections.LineCollection([], linewidths = line_width)
             self.line_collection.set_color(color)
-        def set_to_item(self, item, lines):
-            self.item = item
-            self.line_collection.set_segments(lines)
+            self.line_collection.set_alpha(alpha)
+            self.plot = plot
+        def highlight(self, item):
+            """
+            Highlight the given item.
+            Item can be None, which will remove highlighting.
+            Returns True if the highlight changed at all.
+            """
+            if self.item == item:
+                return False # No change
+            elif item is None:
+                self.clear()
+            else:
+                self.item = item
+                item_lines = []
+                self.plot._plot_item(item, item_lines)
+                self.line_collection.set_segments(item_lines)
+            return True
         def clear(self):
             self.item = None
             self.line_collection.set_segments([])

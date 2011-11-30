@@ -26,6 +26,8 @@ class DendrogramViewWidget(gtk.VBox):
         self.fig = matplotlib.figure.Figure()
         self.axes = self.fig.add_subplot(111)
         self.dendro_plot = None # Gets set to a DendrogramPlot object
+        self.highlighter_clicked = None # a Highlighter object to color the clicked item
+        self.highlighter_hover = None # a Highlighter object to color an item on mouseover
         
         # UI structure:
         canvas = FigureCanvasGTKAgg(self.fig)  # a gtk.DrawingArea
@@ -90,15 +92,16 @@ class DendrogramViewWidget(gtk.VBox):
             self._is_mouse_down = True
     def _figure_mouseup(self, event):
         self._is_mouse_down = False
-    def _figure_mousemoved(self, event):
-        if self._is_mouse_down and (event.xdata != None and event.ydata != None): # If we're in the canvas:
-            print("motion ({0},{1})".format(int(event.xdata),int(event.ydata)))
-        # Note other mouse motion updates get processed below in _NavigationToolbar.mouse_move
-        if (event.xdata != None and event.ydata != None and self.dendro_plot):
+        if self.highlighter_clicked:
             item = self.dendro_plot.item_at(event.xdata, event.ydata)
-            if item:
-                self.dendro_plot.highlight(item=item)
+            if self.highlighter_clicked.highlight(item):
                 self.needs_redraw = True
+    def _figure_mousemoved(self, event):
+        if self.highlighter_hover:
+            item = self.dendro_plot.item_at(event.xdata, event.ydata)
+            if self.highlighter_hover.highlight(item): # return true if changed:
+                self.needs_redraw = True
+        # Note other mouse motion updates get processed below in _NavigationToolbar.mouse_move
 
     def _compute_btn_clicked(self, btn, event):
         if not self.dendrogram:
@@ -109,8 +112,9 @@ class DendrogramViewWidget(gtk.VBox):
         min_delta= self._min_delta_widget.get_value()
         self.dendrogram.compute(minimum_flux=min_flux, minimum_npix=min_npix, minimum_delta=min_delta)
         self.axes.clear()
-        self.dendro_plot = self.dendrogram.make_plot()
-        self.dendro_plot.add_to_axes(self.axes)
+        self.dendro_plot = self.dendrogram.make_plot(self.axes)
+        self.highlighter_clicked = self.dendro_plot.create_highlighter('red', alpha=1)
+        self.highlighter_hover = self.dendro_plot.create_highlighter('green', alpha=0.7) 
         self.needs_redraw = True
 
     def _check_redraw(self):
