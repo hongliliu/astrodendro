@@ -6,7 +6,10 @@ import gtk
 import matplotlib
 import numpy as np
 import astrodendro
+from astrodendro.components import Branch, Leaf
 from matplotlib.backends.backend_gtkagg import FigureCanvasGTKAgg, NavigationToolbar2GTKAgg
+
+
 
 class DendrogramViewWidget(gtk.VBox):
 
@@ -78,14 +81,13 @@ class DendrogramViewWidget(gtk.VBox):
         
         # Set up event handling:
         self._is_mouse_down = False # is the mouse button currently pressed?
-        self.needs_redraw = False # Set this to True if you want the canvas to be repainted
+        self._redraw_all = False # Set this to True to trigger a complete re-draw of the canvas when idle
+        self._redraw_highlights = False # Set this True to  re-draw only the highlighted (clicked or hovered) leaves
         canvas.mpl_connect('button_press_event', self._figure_mousedown)
         canvas.mpl_connect('button_release_event', self._figure_mouseup)
         canvas.mpl_connect('motion_notify_event', self._figure_mousemoved)
+        canvas.mpl_connect('resize_event', self._figure_resized)
         gtk.idle_add(DendrogramViewWidget._check_redraw, self) # we only want to re re-drawing when the GUI is idle, for maximum interactivity
-        
-        # Finally, put the default message on the status bar:
-        self._plot_toolbar.update_mouseout_message()
     
     def _figure_mousedown(self, event):
         if event.xdata != None and event.ydata != None: # If we're in the canvas:
@@ -95,13 +97,16 @@ class DendrogramViewWidget(gtk.VBox):
         if self.highlighter_clicked:
             item = self.dendro_plot.item_at(event.xdata, event.ydata)
             if self.highlighter_clicked.highlight(item):
-                self.needs_redraw = True
+                self._redraw_highlights = True
     def _figure_mousemoved(self, event):
         if self.highlighter_hover:
             item = self.dendro_plot.item_at(event.xdata, event.ydata)
             if self.highlighter_hover.highlight(item): # return true if changed:
-                self.needs_redraw = True
+                self._redraw_highlights = True
         # Note other mouse motion updates get processed below in _NavigationToolbar.mouse_move
+
+    def _figure_resized(self, event):
+        self._redraw_all = True
 
     def _compute_btn_clicked(self, btn, event):
         if not self.dendrogram:
@@ -115,13 +120,35 @@ class DendrogramViewWidget(gtk.VBox):
         self.dendro_plot = self.dendrogram.make_plot(self.axes)
         self.highlighter_clicked = self.dendro_plot.create_highlighter('red', alpha=1)
         self.highlighter_hover = self.dendro_plot.create_highlighter('green', alpha=0.7) 
-        self.needs_redraw = True
+        self._redraw_all = True
 
     def _check_redraw(self):
-        ''' Update this widget's display if needed. Called only when the main event loop is idle '''
-        if self.needs_redraw:
-            self.fig.canvas.draw()
-            self.needs_redraw = False
+        '''
+        Update this widget's plot if needed.
+        Called only when the main event loop is idle.
+        Does everything in a very controlled manner for max. performance & 
+        interactivity.
+        '''
+        if self._redraw_all:
+            # Render just the dendrogram:
+            if self.dendro_plot:
+                self.fig.canvas.renderer.clear()
+                self.axes.draw_artist(self.dendro_plot.line_collection)
+                # Now cache the result:
+                self._mpl_plot_bitmap_cache = self.fig.canvas.copy_from_bbox(self.axes.bbox)
+                self._redraw_highlights = True
+            self._redraw_all = False
+        if self._redraw_highlights:
+            # Restore the previously cached axes lines and dendrogram plot:
+            self.fig.canvas.restore_region(self._mpl_plot_bitmap_cache)
+            # Render the highlights:
+            if self.highlighter_clicked:
+                self.axes.draw_artist(self.highlighter_clicked.line_collection) # This is the big bottleneck slowing interactivity
+            if self.highlighter_hover:
+                self.axes.draw_artist(self.highlighter_hover.line_collection)
+            # Redraw the axes:
+            self.fig.canvas.blit(self.axes.bbox)
+            self._redraw_highlights = False
         return True
 
     class _NavigationToolbar(NavigationToolbar2GTKAgg):
@@ -145,13 +172,38 @@ class DendrogramViewWidget(gtk.VBox):
                     self.set_cursor(cursors.MOVE)
                     self._lastCursor = cursors.MOVE
     
-            if event.inaxes and event.inaxes.get_navigate():
-                # We are hovering over the plot, so display the data coordinates and real coordinates:
-                x,y = event.xdata, event.ydata
-                self.set_message(u"({x}, {y})".format(x=int(x), y=int(y)))
+            dendro = self.get_parent().dendro_plot
+            if dendro:
+                item = dendro.item_at(event.xdata, event.ydata)
+                if type(item) == Branch:
+                    msg = "Branch with {0} children; has {1:,} ({2:,}) pixels".format(len(item.items), item.npix_self, item.npix)
+                elif type(item) == Leaf:
+                    msg = "Leaf with {0} pixels".format(item.npix)
+                else:
+                    msg = ""
             else:
-                self.update_mouseout_message()
-        def update_mouseout_message(self):
-            ''' Set the message shown when the user's cursor is not over the plot '''
-            if not self.get_parent().dendrogram:
-                self.set_message(u"No dendrogram.")
+                msg = "No dendrogram computed yet."
+            
+            self.set_message(msg)
+        def draw(self):
+            """
+            This gets called on zoom or pan. It updates the locators then tells
+            the canvas to draw.
+            We override the default implementation and set our 
+            DendrogramViewWidget redraw flag instead of calling the slow canvas
+            draw() method. 
+            """
+            for a in self.canvas.figure.get_axes():
+                xaxis = getattr(a, 'xaxis', None)
+                yaxis = getattr(a, 'yaxis', None)
+                locators = []
+                if xaxis is not None:
+                    locators.append(xaxis.get_major_locator())
+                    locators.append(xaxis.get_minor_locator())
+                if yaxis is not None:
+                    locators.append(yaxis.get_major_locator())
+                    locators.append(yaxis.get_minor_locator())
+    
+                for loc in locators:
+                    loc.refresh()
+            self.get_parent()._redraw_all = True

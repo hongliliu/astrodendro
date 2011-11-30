@@ -69,10 +69,16 @@ class Branch(Leaf):
 
     @property
     def npix(self):
+        " Number of pixels among this branch and it's children "
         return len(self.f) + self.npix_children
     @property
     def npix_children(self):
+        " Number of pixels among this branch's children "
         return np.sum([item.npix for item in self.items])
+    @property
+    def npix_self(self):
+        " Number of pixels in this Branch, not counting children "
+        return len(self.f)
     
     @property
     def f_sum(self):
@@ -80,6 +86,9 @@ class Branch(Leaf):
     @property
     def f_sum_children(self):
         return np.sum([item.f_sum for item in self.items])
+    @property
+    def f_sum_self(self):
+        return np.sum(self.f)
 
 
     def add_footprint(self, image, level, recursive=True):
@@ -122,6 +131,10 @@ class DendrogramPlot():
         self.ymin -= vspace
         self.ymax += vspace
         
+        # Create the line collection:
+        self.line_collection = mpl.collections.LineCollection(self.lines, linewidths = self.line_width)
+        self.line_collection.set_color(color)
+        
         # Now attach to the given matplotlib axes:
         self.axes = axes
         if axes:
@@ -133,9 +146,7 @@ class DendrogramPlot():
                 # Y values will not be correct, so hide them:
                 axes.set_yticks([])
                 axes.set_yticklabels([])
-            line_collection = mpl.collections.LineCollection(self.lines, linewidths = self.line_width)
-            line_collection.set_color(color)
-            axes.add_collection(line_collection)
+            axes.add_collection(self.line_collection)
     
     @property
     def xmin(self): return 0 - self.x_increment
