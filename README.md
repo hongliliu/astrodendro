@@ -69,8 +69,7 @@ The pixel positions and fluxes of all the pixels in a leaf can then be retrieved
     [1.4287809,
     1.4096074,
     1.4536692,
-    1.4319911,
-    1.5811987]
+    1.4319911]
 
 It is also possible to directly retrieve all the leaves:
 
