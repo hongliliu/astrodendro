@@ -8,6 +8,15 @@ Nature)](http://adsabs.harvard.edu/abs/2009Natur.457...63G).
 
 **DISCLAIMER**: The code has not yet been thoroughly tested and should **not** be considered science-ready.
 
+Screenshot
+==========
+
+In this screenshot from an upcoming release, you can see what the 
+generated dendrograms look like, as returned by the plot() method
+described below.
+
+![Screenshot](http://i.imgur.com/UOnMa.png)
+
 Installing
 ==========
 
