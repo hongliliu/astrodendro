@@ -1,4 +1,5 @@
 import numpy as np
+import matplotlib as mpl
 
 def item_sort_key(item):
     " Given a Branch or Leaf, this returns a key used to sort them for plotting "
@@ -49,13 +50,6 @@ class Leaf(object):
         for c in self.coords:
             image[c] = level
 
-    def plot_dendrogram(self, plot, parent_y_level):
-        # Draw the vertical line for this leaf:
-        x = plot.cur_x
-        plot.add_line( (x, self.fmax*plot.flux_mult), (x, parent_y_level) )
-        plot.cur_x += plot.x_increment
-        return x
-
     def to_newick(self):
         return "%i:%.3f" % (self.idx, self.height)
 
@@ -94,17 +88,6 @@ class Branch(Leaf):
                 item.add_footprint(image, level + 1)
         Leaf.add_footprint(self, image, level)
 
-    def plot_dendrogram(self, plot, parent_y_level):
-        y_level = self.merge_level * plot.flux_mult
-        # Plot child branches & leaves, recording the x values at which they are plotted:
-        xvalues = [item.plot_dendrogram(plot, y_level) for item in self.items]
-        mean_x = int(sum(xvalues) / len(xvalues))
-        # Add vertical line for this branch:
-        plot.add_line( (mean_x, parent_y_level), (mean_x, y_level) )
-        # Add horizontal line for this branch:
-        plot.add_line( (xvalues[0], y_level), (xvalues[-1], y_level) )
-        return mean_x
-
     def to_newick(self):
         newick_items = []
         for item in self.items:
@@ -112,23 +95,114 @@ class Branch(Leaf):
         return "(%s)%s:%.3f" % (','.join(newick_items), self.idx, self.height)
 
 
-class DendrogramPlotInfo():
+class DendrogramPlot():
     def __init__(self, line_width, spacing, min_flux):
         self.line_width = line_width
         self.spacing = spacing
         self.x_increment = line_width + spacing
         self.flux_mult = line_width # All y values (flux values) should be multiplied by this factor 
-        self.cur_x = 0
+        self._next_x = 0
         self.lines = [] # list of lists of (x,y) tuples
         
         # the xmin, xmax, ymin, ymax properties give the size of the canvas onto which the lines are drawn
         self.ymin = min_flux * self.flux_mult
         self.ymax = self.ymin
+        # Create a dictionary to find what item is found at a given point.
+        # Keys to this dictionary are (x1,x2,y1,y2) tuples defining the rect
+        # in which the Branch or Leaf is plotted. Values in the dictionary
+        # are references to the actual Branch or Leaf
+        self._item_map = {}
+        self._x_map = {} # Map between item idx and the value of cur_x when the item was created
+        # The list of colours used in plotting; first colour is used for all 
+        # non-highlighted lines
+        self.colours = ['blue', 'red', 'green', 'orange'] 
+        # Create a list of _Highlight info objects representing "highlighted" items
+        self.highlights = [self._HighlightInfo(self.colours[i], line_width) for i in range(1,len(self.colours))]
     @property
     def xmin(self): return 0 - self.x_increment
     @property
-    def xmax(self): return self.cur_x + self.x_increment
-    def add_line(self, point1, point2):
-        self.lines.append([point1, point2])
-        if point1[1] > self.ymax: self.ymax = point1[1]
-        if point2[1] > self.ymax: self.ymax = point2[1]
+    def xmax(self): return self._next_x + self.x_increment
+    def item_at(self,x,y):
+        """ Returns the item at the given point on the plot, or None """
+        for (xmin,xmax,ymin,ymax), item in self._item_map.iteritems():
+            if x >= xmin and x <= xmax and y > ymin and y < ymax:
+                return item
+    def add_to_axes(self, axes):
+        """ Add this plot to the given matplotlib Axes instance """
+        axes.set_xlim([self.xmin, self.xmax]) 
+        axes.set_ylim([self.ymin, self.ymax])
+        axes.set_xticks([])
+        axes.set_xticklabels([])
+        if self.line_width > 1:
+            # Y values will not be correct, so hide them:
+            axes.set_yticks([])
+            axes.set_yticklabels([])
+        line_collection = mpl.collections.LineCollection(self.lines, linewidths = self.line_width)
+        axes.add_collection(line_collection)
+        for h in self.highlights:
+            axes.add_collection(h.line_collection)
+    def _plot_item(self, item, line_list):
+        if item.parent:
+            parent_y_level = item.parent.merge_level*self.flux_mult
+        else:
+            parent_y_level = self.ymin
+            
+        if type(item) == Leaf:
+            # Draw the vertical line for this leaf:
+            top_y = item.fmax*self.flux_mult
+            if item.idx in self._x_map:
+                # We've plotted this before, so we know
+                # what x value to use
+                x = self._x_map[item.idx]
+            else: # This is an item never before plotted
+                x = self._next_x
+                self._next_x += self.x_increment
+                xmin,xmax,ymin,ymax = (x-self.x_increment/2,x+self.x_increment/2, parent_y_level, top_y)
+                # Add the item to our maps:
+                self._item_map[(xmin,xmax,ymin,ymax)] = item
+                self._x_map[item.idx] = x
+            line_list.append([(x, top_y), (x, parent_y_level)])
+            if top_y > self.ymax:
+                self.ymax = top_y
+            return x
+        elif type(item) == Branch:
+            # Plot child branches & leaves, recording the x values at which they are plotted:
+            xvalues = [self._plot_item(child, line_list) for child in item.items]
+            mean_x = int(sum(xvalues) / len(xvalues))
+            y_level = item.merge_level * self.flux_mult
+            # Add vertical line for this branch:
+            line_list.append( [(mean_x, parent_y_level), (mean_x, y_level)] )
+            # Add horizontal line for this branch:
+            line_list.append( [(xvalues[0], y_level), (xvalues[-1], y_level)] )
+            if item.idx not in self._x_map: # If this is the main plot:
+                self._item_map[(xvalues[0], xvalues[-1], parent_y_level,y_level)] = item
+                self._x_map[item.idx] = xvalues[0]
+            return mean_x
+            
+    def highlight(self, highlight_index=0, item=None):
+        """
+        Update the plot to highlight a particular item
+        Up to three different items can be highlighted and will be drawn in
+        different colours, one colour/item for each highlight_index.
+        Pass item=None to remove a highlight at any index
+        """
+        highlight_info = self.highlights[highlight_index]
+        if item:
+            if highlight_info.item != item:
+                item_lines = []
+                self._plot_item(item, item_lines)
+                highlight_info.set_to_item(item, item_lines)
+        else:
+            highlight_info.clear()
+    
+    class _HighlightInfo:
+        def __init__(self, color, line_width):
+            self.item = None
+            self.line_collection = mpl.collections.LineCollection([], linewidths = line_width)
+            self.line_collection.set_color(color)
+        def set_to_item(self, item, lines):
+            self.item = item
+            self.line_collection.set_segments(lines)
+        def clear(self):
+            self.item = None
+            self.line_collection.set_segments([])

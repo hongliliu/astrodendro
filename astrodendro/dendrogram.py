@@ -25,10 +25,9 @@
 
 import numpy as np
 
-from astrodendro.components import Branch, Leaf, DendrogramPlotInfo, item_sort_key
+from astrodendro.components import Branch, Leaf, DendrogramPlot, item_sort_key
 from astrodendro.newick import parse_newick
 try:
-    import matplotlib
     import matplotlib.pylab
 except ImportError:
     # The plot method won't work without matplotlib, but everything else will be fine
@@ -37,15 +36,16 @@ except ImportError:
 
 class Dendrogram(object):
 
-    def __init__(self, data=None, minimum_flux=-np.inf, minimum_npix=0, minimum_delta=0, verbose=True):
+    def __init__(self, data=None, minimum_flux=-np.inf, minimum_npix=0, minimum_delta=0, verbose=True, compute=True):
 
         if data is not None:
             self.data = data
             self.n_dim = len(data.shape)
-            self.compute(minimum_flux, minimum_npix, minimum_delta, verbose)
+            if compute:
+                self.compute(minimum_flux, minimum_npix, minimum_delta, verbose)
 
 
-    def compute(self, minimum_flux, minimum_npix, minimum_delta, verbose):
+    def compute(self, minimum_flux, minimum_npix, minimum_delta, verbose=False):
 
         # Create a list of all points in the cube above minimum_flux
         keep = self.data.ravel() > minimum_flux
@@ -350,30 +350,30 @@ class Dendrogram(object):
         self.trunk = construct_tree(tree)#sorted(construct_tree(tree), key=item_sort_key)
         # TODO
     
-    def plot(self, line_width = 1, spacing = 5, interactive_plot = True):
-        axis = matplotlib.pylab.gca()
+    def plot(self, line_width = 1, spacing = 5):
+        """
+        Plot a Dendrogram using matplotlib.
+        Works with IPython's pylab mode, so you can just type: dendrogram.plot() 
+        """
+        plot = self.make_plot(line_width, spacing)
+        plot.add_to_axes(matplotlib.pylab.gca())
+        matplotlib.pylab.draw_if_interactive()
 
+    def make_plot(self, line_width=1, spacing=5):
+        """
+        Returns a DendrogramPlot object that can draw a matplotlib figure
+        The DendrogramPlot object also has a useful get_item_at(x,y) method.
+        """
         # Find the minimum flux among all root branches:
         min_f = np.min([item.fmin for item in self.trunk])
         # Set up variables needed for plotting:
-        plot = DendrogramPlotInfo(line_width, spacing, min_f)
+        plot = DendrogramPlot(line_width, spacing, min_f)
         # recursively generate the necessary lines:
         for item in self.trunk:
-            item.plot_dendrogram(plot, plot.ymin)
+            plot._plot_item(item, plot.lines)
         # Add a bit of padding above & below the plot:
         plot_vspace = (plot.ymax - plot.ymin) * 0.01
         plot.ymin -= plot_vspace
         plot.ymax += plot_vspace
         
-        axis.set_xlim([plot.xmin, plot.xmax]) 
-        axis.set_ylim([plot.ymin, plot.ymax])
-        axis.set_xticks([])
-        axis.set_xticklabels([])
-        if line_width > 1:
-            # Y values will not be correct, so hide them:
-            axis.set_yticks([])
-            axis.set_yticklabels([])
-        line_collection = matplotlib.collections.LineCollection(plot.lines, linewidths = line_width)
-        axis.add_collection(line_collection)
-        if interactive_plot:
-            matplotlib.pylab.draw_if_interactive()
+        return plot
