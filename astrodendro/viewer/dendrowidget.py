@@ -13,7 +13,7 @@ from matplotlib.backends.backend_gtkagg import FigureCanvasGTKAgg, NavigationToo
 
 class DendrogramViewWidget(gtk.VBox):
 
-    def __init__(self, cube_view, parent_window):
+    def __init__(self, cube, parent_window):
         """
         A Dendrogram Plot Widget. Designed as a companion to an 
         astrocube.cubeview.CubeViewWidget which should be passed as cube_view
@@ -21,8 +21,8 @@ class DendrogramViewWidget(gtk.VBox):
         gtk.VBox.__init__(self, False)
 
         # Main data structures:         
-        self.cube = cube_view.cube # The cube that this widget's dendrogram represents
-        self.data = cube_view.cube.data # Save a reference to the cube's original data, as we may replace it...
+        self.cube = cube # The cube that this widget's dendrogram represents
+        self.data = cube.data # Save a reference to the cube's original data, as we may replace it...
         self.dendrogram = None # The Dendrogram for the cube. To be built later
 
         # The plot:
@@ -150,6 +150,19 @@ class DendrogramViewWidget(gtk.VBox):
             self.fig.canvas.blit(self.axes.bbox)
             self._redraw_highlights = False
         return True
+    
+    def set_clicked_item_by_coords(self, coords):
+        " Highlight whatever item is at the specified coordinates "
+        if self.dendrogram and self.highlighter_clicked:
+            idx = self.dendrogram.index_map[coords]
+            if idx:
+                item = self.dendrogram.items_dict[idx]
+            else:
+                item = None
+            if self.highlighter_clicked.highlight(item):
+                self._redraw_highlights = True
+            return item
+        return None
 
     class _NavigationToolbar(NavigationToolbar2GTKAgg):
         def __init__(self, cube, canvas, parent_window):
