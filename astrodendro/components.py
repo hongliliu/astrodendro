@@ -56,6 +56,10 @@ class Leaf(object):
     def get_peak(self):
         imax = np.argmax(self.f)
         return self.coords[imax], self.f[imax]
+    
+    def get_peak_recursive(self): # Preserve same interface as Branch, below
+        c,f = self.get_peak()
+        return self, c, f
 
 
 class Branch(Leaf):
@@ -102,6 +106,21 @@ class Branch(Leaf):
         for item in self.items:
             newick_items.append(item.to_newick())
         return "(%s)%s:%.3f" % (','.join(newick_items), self.idx, self.height)
+    
+    def get_peak_recursive(self):
+        """
+        Return the item, coordinate, and flux value of the pixel with highest
+        intensity among this branch and its children.
+        """
+        imax = np.argmax(self.f)
+        item = self
+        c, f = self.coords[imax], self.f[imax]
+        for child in self.items:
+            # get Child Item, Child peak Coords, Child Flux:
+            ci, cc, cf = child.get_peak_recursive() 
+            if cf > f:
+                item, c, f = ci, cc, cf
+        return item, c, f
 
 
 class DendrogramPlot():

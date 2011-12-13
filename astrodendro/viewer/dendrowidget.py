@@ -88,6 +88,16 @@ class DendrogramViewWidget(gtk.VBox):
         canvas.mpl_connect('motion_notify_event', self._figure_mousemoved)
         canvas.mpl_connect('resize_event', self._figure_resized)
         gtk.idle_add(DendrogramViewWidget._check_redraw, self) # we only want to re re-drawing when the GUI is idle, for maximum interactivity
+        
+        self._click_notify = []
+    
+    def on_click(self, func):
+        """
+        Register a function to be called when the user clicks on an item.
+        Passes the item (or None) to the event handler.
+        """
+        if not func in self._click_notify:
+            self._click_notify.append(func) 
     
     def _figure_mousedown(self, event):
         if event.xdata != None and event.ydata != None: # If we're in the canvas:
@@ -98,6 +108,8 @@ class DendrogramViewWidget(gtk.VBox):
             item = self.dendro_plot.item_at(event.xdata, event.ydata)
             if self.highlighter_clicked.highlight(item):
                 self._redraw_highlights = True
+            for handler in self._click_notify:
+                handler(item)
     def _figure_mousemoved(self, event):
         if self.highlighter_hover:
             item = self.dendro_plot.item_at(event.xdata, event.ydata)

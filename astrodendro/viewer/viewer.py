@@ -57,6 +57,8 @@ class DendroViewer:
         # Set up events:
         self.cube_view.on_click(self.cube_clicked)
         self.cube_highlight = self.cube_view.create_highlighter()
+        self.dendro_view.on_click(self.dendro_clicked)
+        self.highlighted_item = None
         
     def run(self):
         self.win.show_all()
@@ -66,6 +68,20 @@ class DendroViewer:
         item_clicked = self.dendro_view.set_clicked_item_by_coords(coords)
         if (item_clicked):
             self.highlight_item_in_cube(item_clicked)
+    
+    def dendro_clicked(self, item):
+        if item:
+            if item != self.highlighted_item:
+                self.highlighted_item = item
+                self.highlight_item_in_cube(item)
+            else:
+                # User has clicked on the item already highlighted.
+                # Mark the point of greatest flux in the view:
+                _,max_coords,_ = item.get_peak_recursive()
+                self.cube_view.x, self.cube_view.y, self.cube_view.z = max_coords    
+        else:
+            self.highlighted_item = None
+            self.cube_highlight.clear()
     
     def highlight_item_in_cube(self, item):
         mapdata = np.zeros(self.cube.data.shape)
