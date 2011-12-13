@@ -30,7 +30,7 @@ def benchmark_plot():
     num = 100
     
     def testP():
-        d.plot(interactive_plot=False)
+        d.make_plot(axes=None)
 
     tP = timeit.timeit(testP, number=num) / num
 
