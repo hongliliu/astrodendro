@@ -8,6 +8,15 @@ Nature)](http://adsabs.harvard.edu/abs/2009Natur.457...63G).
 
 **DISCLAIMER**: The code has not yet been thoroughly tested and should **not** be considered science-ready.
 
+Screenshot
+==========
+
+In this screenshot from an upcoming release, you can see what the 
+generated dendrograms look like, as returned by the plot() method
+described below.
+
+![Screenshot](http://i.imgur.com/UOnMa.png)
+
 Installing
 ==========
 
@@ -60,8 +69,7 @@ The pixel positions and fluxes of all the pixels in a leaf can then be retrieved
     [1.4287809,
     1.4096074,
     1.4536692,
-    1.4319911,
-    1.5811987]
+    1.4319911]
 
 It is also possible to directly retrieve all the leaves:
 
