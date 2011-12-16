@@ -37,13 +37,19 @@ class DendroViewer:
         first_row.pack2(self.dendro_view, resize=True, shrink=True)
         
         # and an IPython command widget in the bottom row:
-    
-        ipython_widget = IPythonView() # An IPython terminal. Does not support scrolling by itself...
-        ipython_widget.set_wrap_mode(gtk.WRAP_CHAR)
+        
+        ipython_namespace = {'cube': self.cube, 'cube_view': self.cube_view,
+                             'dendro_view': self.dendro_view }
+        
+        self.ipython_widget = IPythonView()
+        for key,val in ipython_namespace.items():
+            self.ipython_widget.IP.user_ns[key] = val 
+        # An IPython widget does not support scrolling by itself...
+        self.ipython_widget.set_wrap_mode(gtk.WRAP_CHAR)
         ipython_scroller = gtk.ScrolledWindow() # so we wrap it in a scrolled window
         ipython_scroller.set_size_request(-1,75)
         ipython_scroller.set_policy(gtk.POLICY_NEVER, gtk.POLICY_ALWAYS)
-        ipython_scroller.add(ipython_widget)
+        ipython_scroller.add(self.ipython_widget)
        
         
         main_pane = gtk.VPaned()
@@ -58,11 +64,15 @@ class DendroViewer:
         self.cube_view.on_click(self.cube_clicked)
         self.cube_highlight = self.cube_view.create_highlighter()
         self.dendro_view.on_click(self.dendro_clicked)
+        self.dendro_view.on_compute(self.dendro_computed)
         self.highlighted_item = None
         
     def run(self):
         self.win.show_all()
         gtk.main()
+    
+    def dendro_computed(self, dendrogram):
+        self.ipython_widget.IP.user_ns['dendro'] = dendrogram
     
     def cube_clicked(self, coords, flux):
         item_clicked = self.dendro_view.set_clicked_item_by_coords(coords)

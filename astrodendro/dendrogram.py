@@ -348,7 +348,13 @@ class Dendrogram(object):
             return items
 
         self.trunk = construct_tree(tree)#sorted(construct_tree(tree), key=item_sort_key)
-        # TODO
+    
+    def item_at(self, coords):
+        " Get the item at the given pixel coordinate, or None "
+        idx = self.index_map[coords]
+        if idx:
+            return self.items_dict[idx]
+        return None
     
     def plot(self):
         """

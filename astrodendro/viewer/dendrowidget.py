@@ -90,6 +90,7 @@ class DendrogramViewWidget(gtk.VBox):
         gtk.idle_add(DendrogramViewWidget._check_redraw, self) # we only want to re re-drawing when the GUI is idle, for maximum interactivity
         
         self._click_notify = []
+        self._compute_notify = []
     
     def on_click(self, func):
         """
@@ -98,6 +99,14 @@ class DendrogramViewWidget(gtk.VBox):
         """
         if not func in self._click_notify:
             self._click_notify.append(func) 
+    
+    def on_compute(self, func):
+        """
+        Register a function to be called when the user [re]computes a dendrogram
+        Passes the new dendrogram object to the event handler
+        """
+        if not func in self._compute_notify:
+            self._compute_notify.append(func)
     
     def _figure_mousedown(self, event):
         if event.xdata != None and event.ydata != None: # If we're in the canvas:
@@ -133,6 +142,8 @@ class DendrogramViewWidget(gtk.VBox):
         self.highlighter_clicked = self.dendro_plot.create_highlighter('red', alpha=1)
         self.highlighter_hover = self.dendro_plot.create_highlighter('green', alpha=0.7) 
         self._redraw_all = True
+        for handler in self._compute_notify:
+            handler(self.dendrogram)
 
     def _check_redraw(self):
         '''
@@ -166,11 +177,7 @@ class DendrogramViewWidget(gtk.VBox):
     def set_clicked_item_by_coords(self, coords):
         " Highlight whatever item is at the specified coordinates "
         if self.dendrogram and self.highlighter_clicked:
-            idx = self.dendrogram.index_map[coords]
-            if idx:
-                item = self.dendrogram.items_dict[idx]
-            else:
-                item = None
+            item = self.dendrogram.item_at(coords)
             if self.highlighter_clicked.highlight(item):
                 self._redraw_highlights = True
             return item
