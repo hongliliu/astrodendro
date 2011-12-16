@@ -8,18 +8,22 @@ except ImportError:  # Python 2.x
     from distutils.command.build_py import build_py
 
 setup(name='Astronomical Dendrograms',
-      version='0.1.0',
+      version='0.2.0',
       description='Astronomical Dendrograms',
-      author='Thomas Robitaille',
-      author_email='thomas.robitaille@gmail.com',
+      author='Braden MacDonald and Thomas Robitaille',
+      author_email='braden@bradenmacdonald.com',
       packages=['astrodendro'],
       scripts=['scripts/astrodendro-viewer'],
       provides=['astrodendro'],
       requires=['numpy'],
+      extras_require = {
+          'Plotting':  ['matplotlib'],
+          'GUI': ['matplotlib', 'pygtk', 'ipython'],
+      },
       cmdclass={'build_py': build_py},
       keywords=['Scientific/Engineering'],
       classifiers=[
-                   "Development Status :: 3 - Alpha",
+                   "Development Status :: 4 - Beta",
                    "Programming Language :: Python",
                    "License :: OSI Approved :: MIT License",
                   ],

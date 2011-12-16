@@ -11,9 +11,8 @@ Nature)](http://adsabs.harvard.edu/abs/2009Natur.457...63G).
 Screenshot
 ==========
 
-In this screenshot from an upcoming release, you can see what the 
-generated dendrograms look like, as returned by the plot() method
-described below.
+In this screenshot, you can see what the generated dendrograms look like, as
+returned by the plot() method described below.
 
 ![Screenshot](http://i.imgur.com/UOnMa.png)
 
@@ -98,16 +97,32 @@ Plotting
 Plotting a Dendrogram is easy when this module is used within IPython
 in pylab mode:
 
-```python
-d = Dendrogram(array)
-d.plot()
-```
+	d = Dendrogram(array)
+	d.plot()
 
-Writing
-=======
+Viewer
+======
 
-Dendrograms can be written out and read in from a portable HDF5-based
-format:
+An simple application is included which uses PyGTK, astrodendro and 
+[astrocube](https://github.com/bradenmacdonald/astrocube) to allow you to
+interactively generate dendrograms and see the correspondence between pixels in
+the data cube and items in the dendrogram. 
+
+Once a dendrogram has been created, you can click on any pixel in the cube to 
+highlight the dendrogram node that contains it, or conversely you can click on
+any item in the dendrogram to see which pixels it includes highlighted in the
+data cube. See screenshot above.
+
+The viewer currently only loads FITS files.
+
+To launch the viewer, run the following command:
+
+	astrodendro-viewer fits_file.fits
+
+Import/Export
+=============
+
+Dendrograms can be written out and read in from a portable HDF5-based format:
 
     # Create dendrogram and write it out
     d = Dendrogram(array)
@@ -116,3 +131,16 @@ format:
     # Read dendrogram into new instance
     d2 = Dendrogram()
     d2.from_hdf5('observations_dendrogram.hdf5')
+
+Unit Tests and Benchmarks
+=========================
+
+Several unit tests are included, and are also installed with the package.
+To run the unit tests, simply run the command
+
+	python -m astrodendro.test
+
+A benchmark is also included that uses realistic data to determine how fast the
+dendrograms are being generated. To run the benchmark, use the command
+
+	python -m astrodendro.test.benchmark
