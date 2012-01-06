@@ -38,8 +38,10 @@ class DendroViewer:
         
         # and an IPython command widget in the bottom row:
         
-        ipython_namespace = {'cube': self.cube, 'cube_view': self.cube_view,
-                             'dendro_view': self.dendro_view }
+        ipython_namespace = {'cube': self.cube,
+                             'cube_view': self.cube_view,
+                             'dendro_view': self.dendro_view,
+                             'create_highlighter': self.create_highlighter }
         
         self.ipython_widget = IPythonView()
         for key,val in ipython_namespace.items():
@@ -98,6 +100,28 @@ class DendroViewer:
         item.add_footprint(mapdata, 1)
         mapdata[mapdata>1] = 0.75 # Set the child items to be semi-transparent
         self.cube_highlight.highlight(mapdata)
+        
+    def create_highlighter(self, color):
+        return self._CombinedHighlighter(self.cube_view, self.dendro_view, color)
+    
+    class _CombinedHighlighter:
+        """
+        A highlighter that highlights the data cube and the dendrogram
+        Do not initialize directly, but get from create_highlighter()
+        """
+        def __init__(self, cube_view, dendro_view, color):
+            self.cube_view = cube_view
+            self.dendro_view = dendro_view
+            self.highlighter_cube = cube_view.create_highlighter(color)
+            self.highlighter_dend = dendro_view.dendro_plot.create_highlighter(color)
+        def highlight_coords(self, coords):
+            self.highlight_item(self.dendro_view.dendrogram.item_at(coords))
+        def highlight_item(self, item):
+            mapdata = np.zeros(self.cube_view.cube.data.shape)
+            item.add_footprint(mapdata, 1)
+            mapdata[mapdata>1] = 0.75 # Set the child items to be semi-transparent
+            self.highlighter_cube.highlight(mapdata)
+            self.highlighter_dend.highlight(item)    
 
 if __name__ == "__main__":
     filename = False
