@@ -105,8 +105,8 @@ class DendroViewer:
     def set_color_map(self, cmap = CubeViewWidget.default_cmap):
         """
         Sets the color map used by the cube view (left hand side).
-        Use "bone" for greyscale, "spectral", nor arg for default, etc.
-        Any matplotlib color map will work.
+        Use "bone" (greyscale), "spectral", or any other matplotlib color map.
+        Pass no argument for the default color map.
         """
         self.cube_view.imgplot.set_cmap(cmap)
         self.cube_view.axes.figure.canvas.draw()
@@ -120,18 +120,35 @@ class DendroViewer:
         Do not initialize directly, but get from create_highlighter()
         """
         def __init__(self, cube_view, dendro_view, color):
+            self.color = color
             self.cube_view = cube_view
             self.dendro_view = dendro_view
-            self.highlighter_cube = cube_view.create_highlighter(color)
-            self.highlighter_dend = dendro_view.dendro_plot.create_highlighter(color)
+            self._highlighter_cube = cube_view.create_highlighter(color)
+            self._highlighter_dend = dendro_view.dendro_plot.create_highlighter(color) if dendro_view.dendro_plot else None
         def highlight_coords(self, coords):
-            self.highlight_item(self.dendro_view.dendrogram.item_at(coords))
+            if self.dendro_view.dendrogram:
+                self.highlight_item(self.dendro_view.dendrogram.item_at(coords))
+            else:
+                print("Cannot highlight until a dendrogram is plotted")
         def highlight_item(self, item):
             mapdata = np.zeros(self.cube_view.cube.data.shape)
             item.add_footprint(mapdata, 1)
             mapdata[mapdata>1] = 0.75 # Set the child items to be semi-transparent
-            self.highlighter_cube.highlight(mapdata)
-            self.highlighter_dend.highlight(item)    
+            if not self._highlighter_dend:
+                # There was no dendrogram plot when this combined highlighter was created
+                if self.dendro_view.dendro_plot:
+                    # But one exists now:
+                    self._highlighter_dend = self.dendro_view.dendro_plot.create_highlighter(self.color)
+                else:
+                    # And there still isn't, so we're done
+                    return
+            elif self._highlighter_dend.plot != self.dendro_view.dendro_plot:
+                # The dendrogram has changed (been re-plotted), so re-create the highlighter:
+                self._highlighter_dend.clear()
+                self._highlighter_dend = self.dendro_view.dendro_plot.create_highlighter(self.color)
+            # Now highlight on the dendrogram plot:
+            self._highlighter_cube.highlight(mapdata)
+            self._highlighter_dend.highlight(item)    
 
 if __name__ == "__main__":
     filename = False
