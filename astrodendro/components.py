@@ -166,6 +166,11 @@ class DendrogramPlot():
                 axes.set_yticks([])
                 axes.set_yticklabels([])
             axes.add_collection(self.line_collection)
+        
+        # A list of highlighters created on this plot:
+        self.highlighters_active = []
+        # Methods can be registered that will get called whenever a highlight changes:
+        self._highlight_change_notify = []
     
     @property
     def xmin(self): return 0 - self.x_increment
@@ -219,6 +224,11 @@ class DendrogramPlot():
                 self._x_map[item.idx] = xvalues[0]
             return mean_x
     
+    def on_highlight_change(self, func):
+        """ Register a function to be called whenever any highlight changes """
+        if not func in self._highlight_change_notify:
+            self._highlight_change_notify.append(func)
+    
     def create_highlighter(self, color='red', alpha=1):
         """
         Set up a plot for interactive highlighting.
@@ -227,6 +237,7 @@ class DendrogramPlot():
         color specified when the highlighter was created.
         """
         h = self._Highlighter(self, color, alpha, self.line_width+1)
+        self.highlighters_active.append(h)
         self.axes.add_collection(h.line_collection)
         return h
     
@@ -254,7 +265,11 @@ class DendrogramPlot():
                 item_lines = []
                 self.plot._plot_item(item, item_lines)
                 self.line_collection.set_segments(item_lines)
+                for func in self.plot._highlight_change_notify:
+                    func()
             return True
         def clear(self):
             self.item = None
             self.line_collection.set_segments([])
+            for func in self.plot._highlight_change_notify:
+                func()

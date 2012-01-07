@@ -41,7 +41,8 @@ class DendroViewer:
         ipython_namespace = {'cube': self.cube,
                              'cube_view': self.cube_view,
                              'dendro_view': self.dendro_view,
-                             'create_highlighter': self.create_highlighter }
+                             'create_highlighter': self.create_highlighter,
+                             'set_color_map': self.set_color_map }
         
         self.ipython_widget = IPythonView()
         for key,val in ipython_namespace.items():
@@ -100,7 +101,16 @@ class DendroViewer:
         item.add_footprint(mapdata, 1)
         mapdata[mapdata>1] = 0.75 # Set the child items to be semi-transparent
         self.cube_highlight.highlight(mapdata)
-        
+    
+    def set_color_map(self, cmap = CubeViewWidget.default_cmap):
+        """
+        Sets the color map used by the cube view (left hand side).
+        Use "bone" for greyscale, "spectral", nor arg for default, etc.
+        Any matplotlib color map will work.
+        """
+        self.cube_view.imgplot.set_cmap(cmap)
+        self.cube_view.axes.figure.canvas.draw()
+    
     def create_highlighter(self, color):
         return self._CombinedHighlighter(self.cube_view, self.dendro_view, color)
     
