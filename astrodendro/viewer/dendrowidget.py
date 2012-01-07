@@ -90,6 +90,7 @@ class DendrogramViewWidget(gtk.VBox):
         gtk.idle_add(DendrogramViewWidget._check_redraw, self) # we only want to re re-drawing when the GUI is idle, for maximum interactivity
         
         self._click_notify = []
+        self._compute_notify = []
     
     def on_click(self, func):
         """
@@ -98,6 +99,14 @@ class DendrogramViewWidget(gtk.VBox):
         """
         if not func in self._click_notify:
             self._click_notify.append(func) 
+    
+    def on_compute(self, func):
+        """
+        Register a function to be called when the user [re]computes a dendrogram
+        Passes the new dendrogram object to the event handler
+        """
+        if not func in self._compute_notify:
+            self._compute_notify.append(func)
     
     def _figure_mousedown(self, event):
         if event.xdata != None and event.ydata != None: # If we're in the canvas:
@@ -119,6 +128,9 @@ class DendrogramViewWidget(gtk.VBox):
 
     def _figure_resized(self, event):
         self._redraw_all = True
+    
+    def _highlights_changed(self):
+        self._redraw_highlights = True
 
     def _compute_btn_clicked(self, btn, event):
         if not self.dendrogram:
@@ -131,8 +143,11 @@ class DendrogramViewWidget(gtk.VBox):
         self.axes.clear()
         self.dendro_plot = self.dendrogram.make_plot(self.axes)
         self.highlighter_clicked = self.dendro_plot.create_highlighter('red', alpha=1)
-        self.highlighter_hover = self.dendro_plot.create_highlighter('green', alpha=0.7) 
+        self.highlighter_hover = self.dendro_plot.create_highlighter('green', alpha=0.7)
+        self.dendro_plot.on_highlight_change(self._highlights_changed) 
         self._redraw_all = True
+        for handler in self._compute_notify:
+            handler(self.dendrogram)
 
     def _check_redraw(self):
         '''
@@ -154,10 +169,10 @@ class DendrogramViewWidget(gtk.VBox):
             # Restore the previously cached axes lines and dendrogram plot:
             self.fig.canvas.restore_region(self._mpl_plot_bitmap_cache)
             # Render the highlights:
-            if self.highlighter_clicked:
-                self.axes.draw_artist(self.highlighter_clicked.line_collection) # This is the big bottleneck slowing interactivity
-            if self.highlighter_hover:
-                self.axes.draw_artist(self.highlighter_hover.line_collection)
+            if self.dendro_plot:
+                for highlighter in self.dendro_plot.highlighters_active:
+                    self.axes.draw_artist(highlighter.line_collection)
+                    # This is the big bottleneck slowing interactivity
             # Redraw the axes:
             self.fig.canvas.blit(self.axes.bbox)
             self._redraw_highlights = False
@@ -166,11 +181,7 @@ class DendrogramViewWidget(gtk.VBox):
     def set_clicked_item_by_coords(self, coords):
         " Highlight whatever item is at the specified coordinates "
         if self.dendrogram and self.highlighter_clicked:
-            idx = self.dendrogram.index_map[coords]
-            if idx:
-                item = self.dendrogram.items_dict[idx]
-            else:
-                item = None
+            item = self.dendrogram.item_at(coords)
             if self.highlighter_clicked.highlight(item):
                 self._redraw_highlights = True
             return item
