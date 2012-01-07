@@ -13,6 +13,7 @@ from astrocube import DataCube
 from astrocube.cubeview import CubeViewWidget
 from astrodendro.viewer.dendrowidget import DendrogramViewWidget
 from astrodendro.viewer.ipython_view import IPythonView
+from matplotlib.backends.backend_pdf import PdfPages
 
 import numpy as np
 
@@ -43,7 +44,9 @@ class DendroViewer:
                              'dendro_view': self.dendro_view,
                              'create_highlighter': self.create_highlighter,
                              'set_color_map': self.set_color_map,
-                             'make_dendrogram': self.dendro_view.make_dendrogram }
+                             'make_dendrogram': self.dendro_view.make_dendrogram,
+                             'export_pdf': self.export_pdf,
+                             'export_png': self.export_png }
         
         self.ipython_widget = IPythonView()
         for key,val in ipython_namespace.items():
@@ -111,6 +114,38 @@ class DendroViewer:
         """
         self.cube_view.imgplot.set_cmap(cmap)
         self.cube_view.axes.figure.canvas.draw()
+    
+    def export_pdf(self, filename):
+        pp = PdfPages(filename)
+        pp.savefig(self.cube_view.fig)
+        pp.savefig(self.dendro_view.fig)
+        pp.close()
+        pp = None
+        # Now the draw() method must be called, or some of the dendrogram 
+        # plot artists will cache the PDF renderer and cause bugs, due to
+        # the dendro_view's special handling of rendering
+        self.dendro_view.fig.canvas.draw()
+    
+    def export_png(self, filename_cube, filename_dendro):
+        from matplotlib.backends.backend_agg import FigureCanvasAgg
+        if filename_cube:
+            #self.cube_view.fig.canvas.print_png(filename_cube)
+            canvas = self.cube_view.fig.canvas
+            agg = canvas.switch_backends(FigureCanvasAgg)
+            agg.print_png(filename_cube)
+            agg = None
+            self.cube_view.fig.set_canvas(canvas)
+        if filename_dendro:
+            #self.dendro_view.fig.canvas.print_png(filename_dendro)
+            canvas = self.dendro_view.fig.canvas
+            agg = canvas.switch_backends(FigureCanvasAgg)
+            agg.print_png(filename_dendro)
+            agg = None
+            self.dendro_view.fig.set_canvas(canvas)
+            # Now the draw() method must be called, or some of the dendrogram 
+            # plot artists will cache the PDF renderer and cause bugs, due to
+            # the dendro_view's special handling of rendering
+            self.dendro_view.fig.canvas.draw()
     
     def create_highlighter(self, color):
         return self._CombinedHighlighter(self.cube_view, self.dendro_view, color)
