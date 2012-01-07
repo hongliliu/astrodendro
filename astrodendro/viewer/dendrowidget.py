@@ -92,6 +92,13 @@ class DendrogramViewWidget(gtk.VBox):
         self._click_notify = []
         self._compute_notify = []
     
+    def make_dendrogram(self, min_flux, min_npix, min_delta):
+        " Call this to manually set the parameters and create a new dendrogram"
+        self._min_flux_widget.set_value(min_flux)
+        self._min_npix_widget.set_value(min_npix)
+        self._min_delta_widget.set_value(min_delta)
+        self._compute_btn_clicked(self._compute_button, None)
+    
     def on_click(self, func):
         """
         Register a function to be called when the user clicks on an item.

@@ -42,7 +42,8 @@ class DendroViewer:
                              'cube_view': self.cube_view,
                              'dendro_view': self.dendro_view,
                              'create_highlighter': self.create_highlighter,
-                             'set_color_map': self.set_color_map }
+                             'set_color_map': self.set_color_map,
+                             'make_dendrogram': self.dendro_view.make_dendrogram }
         
         self.ipython_widget = IPythonView()
         for key,val in ipython_namespace.items():
