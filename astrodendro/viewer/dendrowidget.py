@@ -151,7 +151,10 @@ class DendrogramViewWidget(gtk.VBox):
         self.dendro_plot = self.dendrogram.make_plot(self.axes)
         self.highlighter_clicked = self.dendro_plot.create_highlighter('red', alpha=1)
         self.highlighter_hover = self.dendro_plot.create_highlighter('green', alpha=0.7)
-        self.dendro_plot.on_highlight_change(self._highlights_changed) 
+        self.dendro_plot.on_highlight_change(self._highlights_changed)
+        # The first time we render this diagram, we call the draw() method:
+        self.fig.canvas.draw()
+        # From now on we use our more efficient rendered triggered by _redraw_all: 
         self._redraw_all = True
         for handler in self._compute_notify:
             handler(self.dendrogram)

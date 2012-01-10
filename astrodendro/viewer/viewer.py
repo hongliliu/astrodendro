@@ -115,12 +115,51 @@ class DendroViewer:
         self.cube_view.imgplot.set_cmap(cmap)
         self.cube_view.axes.figure.canvas.draw()
     
-    def export_pdf(self, filename):
+    def export_pdf(self, filename, title=None, include_cube_slice=True):
+        """
+        Create a standardized one or two -page PDF of the current figures
+        Filename is e.g. "export1.pdf"
+        Title gets put on every figure in the PDF
+        Set include_cube_slice to False to export only the dendrogram
+        If include_cube_slide is true, the cube view will be exported,
+        at the Z value currently visible in the viewer.
+        """
         pp = PdfPages(filename)
-        pp.savefig(self.cube_view.fig)
+        if title is None:
+            # Default title:
+            title = "Dendrogram from {obj} {line}".format(obj=self.cube.object_name, line=self.cube.line_name)
+        
+        export_size = (10,7.5) # in inches
+        
+        if include_cube_slice:
+            cfig = self.cube_view.fig
+            old_size_cfig = (cfig.get_figwidth(), cfig.get_figheight())
+            cfig.set_size_inches(*export_size)
+            ctitle = cfig.suptitle(title, weight='heavy', size='large')
+            pp.savefig(cfig)
+            # Reset the figure to how it was before:
+            ctitle.set_visible(False) # Closest we can come to deleting these titles
+            cfig.set_figwidth(old_size_cfig[0])
+            cfig.set_figheight(old_size_cfig[1])
+        
+        # Now export the dendrogram figure:
+        dfig = self.dendro_view.fig
+        #old_size_dfig = dfig.get_size_inches()
+        old_size_dfig = (dfig.get_figwidth(), dfig.get_figheight())
+        dfig.set_size_inches(*export_size)
+        dtitle = dfig.suptitle(title, weight='heavy', size='large')
         pp.savefig(self.dendro_view.fig)
+        # Reset the figure to how it was before:
+        dtitle.set_visible(False) 
+        #dfig.set_size_inches(old_size_dfig)
+        dfig.set_figwidth(old_size_dfig[0])
+        dfig.set_figheight(old_size_dfig[1])
+        
+        # Finalize the PDF:
+        pp.infodict()['Title'] = title
         pp.close()
         pp = None
+        
         # Now the draw() method must be called, or some of the dendrogram 
         # plot artists will cache the PDF renderer and cause bugs, due to
         # the dendro_view's special handling of rendering
