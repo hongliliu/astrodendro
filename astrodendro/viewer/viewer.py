@@ -226,6 +226,11 @@ class DendroViewer:
             else:
                 print("Cannot highlight until a dendrogram is plotted")
         def highlight_item(self, item):
+            if not item:
+                self._highlighter_cube.clear()
+                if self._highlighter_dend:
+                    self._highlighter_dend.clear()
+                return
             mapdata = np.zeros(self.cube_view.cube.data.shape)
             item.add_footprint(mapdata, 1)
             mapdata[mapdata>1] = 0.75 # Set the child items to be semi-transparent
