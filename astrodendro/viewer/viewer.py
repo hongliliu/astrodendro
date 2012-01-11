@@ -115,7 +115,7 @@ class DendroViewer:
         self.cube_view.imgplot.set_cmap(cmap)
         self.cube_view.axes.figure.canvas.draw()
     
-    def export_pdf(self, filename, title=None, include_cube_slice=True):
+    def export_pdf(self, filename, title="default", subtitle="default", include_cube_slice=True):
         """
         Create a standardized one or two -page PDF of the current figures
         Filename is e.g. "export1.pdf"
@@ -125,9 +125,24 @@ class DendroViewer:
         at the Z value currently visible in the viewer.
         """
         pp = PdfPages(filename)
-        if title is None:
+        
+        # Figure out the titles and subtitles
+        cube_subtitle = None # This gets prepended to the subitle of the cube only, not the dendrogram
+        if title is "default":
             # Default title:
             title = "Dendrogram from {obj} {line}".format(obj=self.cube.object_name, line=self.cube.line_name)
+        if subtitle is "default":
+            subtitle = "Dendrogram parameters: min. flux {f}, min. npix {n:.0f}, min. delta {d}".format(
+                       f=self.dendro_view.dendrogram.min_flux,
+                       n=self.dendro_view.dendrogram.min_npix,
+                       d=self.dendro_view.dendrogram.min_delta,
+                       )
+            if include_cube_slice:
+                cube_subtitle = "@ {v:.2f} km/s (z={z}). {rest}".format(
+                    v=self.cube.velocity_at(self.cube_view.z),
+                    z=self.cube_view.z,
+                    rest=subtitle,
+                    )
         
         export_size = (10,7.5) # in inches
         
@@ -135,10 +150,12 @@ class DendroViewer:
             cfig = self.cube_view.fig
             old_size_cfig = (cfig.get_figwidth(), cfig.get_figheight())
             cfig.set_size_inches(*export_size)
-            ctitle = cfig.suptitle(title, weight='heavy', size='large')
+            if title: ctitle = cfig.suptitle(title, weight='heavy', size='large')
+            if cube_subtitle: ctitle2 = cfig.suptitle(cube_subtitle, y=0.95)
             pp.savefig(cfig)
             # Reset the figure to how it was before:
-            ctitle.set_visible(False) # Closest we can come to deleting these titles
+            if title: ctitle.set_visible(False) # Closest we can come to deleting these titles
+            if cube_subtitle: ctitle2.set_visible(False)
             cfig.set_figwidth(old_size_cfig[0])
             cfig.set_figheight(old_size_cfig[1])
         
@@ -147,16 +164,19 @@ class DendroViewer:
         #old_size_dfig = dfig.get_size_inches()
         old_size_dfig = (dfig.get_figwidth(), dfig.get_figheight())
         dfig.set_size_inches(*export_size)
-        dtitle = dfig.suptitle(title, weight='heavy', size='large')
+        if title: dtitle = dfig.suptitle(title, weight='heavy', size='large')
+        if subtitle: dtitle2 = dfig.suptitle(subtitle, y=0.95)
         pp.savefig(self.dendro_view.fig)
         # Reset the figure to how it was before:
-        dtitle.set_visible(False) 
+        if title: dtitle.set_visible(False)
+        if subtitle: dtitle2.set_visible(False) 
         #dfig.set_size_inches(old_size_dfig)
         dfig.set_figwidth(old_size_dfig[0])
         dfig.set_figheight(old_size_dfig[1])
         
         # Finalize the PDF:
-        pp.infodict()['Title'] = title
+        if title: 
+            pp.infodict()['Title'] = title
         pp.close()
         pp = None
         

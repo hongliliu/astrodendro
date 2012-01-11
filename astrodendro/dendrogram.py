@@ -41,11 +41,15 @@ class Dendrogram(object):
         if data is not None:
             self.data = data
             self.n_dim = len(data.shape)
+            self._params_used = {'min_flux':None, 'min_npix': None, 'min_delta':None}
             if compute:
                 self.compute(minimum_flux, minimum_npix, minimum_delta, verbose)
 
 
     def compute(self, minimum_flux, minimum_npix, minimum_delta, verbose=False):
+        
+        # For reference, store the parameters used:
+        self._params_used = {'min_flux':minimum_flux, 'min_npix': minimum_npix, 'min_delta':minimum_delta}
 
         # Create a list of all points in the cube above minimum_flux
         keep = self.data.ravel() > minimum_flux
@@ -355,6 +359,16 @@ class Dendrogram(object):
         if idx:
             return self.items_dict[idx]
         return None
+    
+    @property
+    def min_flux(self):
+        return self._params_used['min_flux']
+    @property
+    def min_npix(self):
+        return self._params_used['min_npix']
+    @property
+    def min_delta(self):
+        return self._params_used['min_delta']
     
     def plot(self):
         """
