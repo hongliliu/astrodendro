@@ -44,6 +44,7 @@ class DendroViewer:
                              'dendro_view': self.dendro_view,
                              'create_highlighter': self.create_highlighter,
                              'set_color_map': self.set_color_map,
+                             'set_data': self.set_data,
                              'make_dendrogram': self.dendro_view.make_dendrogram,
                              'export_pdf': self.export_pdf,
                              'export_png': self.export_png }
@@ -105,6 +106,17 @@ class DendroViewer:
         item.add_footprint(mapdata, 1)
         mapdata[mapdata>1] = 0.75 # Set the child items to be semi-transparent
         self.cube_highlight.highlight(mapdata)
+    
+    ### Convenience methods for the user to enter via IPython shell:
+    
+    def set_data(self, data):
+        """
+        Call this method to change the data shown in the cube view and used
+        to compute the dendrogram.
+        """
+        self.cube.data = data
+        self.cube_view.update()
+        self.dendro_view.data = data # This will also clear the dendrogram
     
     def set_color_map(self, cmap = CubeViewWidget.default_cmap):
         """

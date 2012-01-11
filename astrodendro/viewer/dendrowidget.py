@@ -22,7 +22,7 @@ class DendrogramViewWidget(gtk.VBox):
 
         # Main data structures:         
         self.cube = cube # The cube that this widget's dendrogram represents
-        self.data = cube.data # Save a reference to the cube's original data, as we may replace it...
+        self._data = cube.data # Save a reference to the cube's original data, as we may replace it...
         self.dendrogram = None # The Dendrogram for the cube. To be built later
 
         # The plot:
@@ -50,9 +50,9 @@ class DendrogramViewWidget(gtk.VBox):
         # # # Minimum flux:
         self._dendro_toolbar.pack_start(gtk.Label("Min flux: "))
         self._min_flux_widget = gtk.SpinButton(digits=1)
-        self._min_flux_widget.set_range(np.nanmin(self.data)-0.1,np.nanmax(self.data))
+        self._min_flux_widget.set_range(np.nanmin(self._data)-0.1,np.nanmax(self._data))
         self._min_flux_widget.set_increments(0.1,1)
-        self._min_flux_widget.set_value(np.nanmin(self.data))
+        self._min_flux_widget.set_value(np.nanmin(self._data))
         self._dendro_toolbar.pack_start(self._min_flux_widget)
         
         # # # Minimum npix:
@@ -66,7 +66,7 @@ class DendrogramViewWidget(gtk.VBox):
         # # # Minimum delta:
         self._dendro_toolbar.pack_start(gtk.Label("Min delta: "))
         self._min_delta_widget = gtk.SpinButton(digits=2)
-        self._min_delta_widget.set_range(0,np.nanmax(self.data))
+        self._min_delta_widget.set_range(0,np.nanmax(self._data))
         self._min_delta_widget.set_increments(0.05,0.3)
         self._min_delta_widget.set_value(0)
         self._dendro_toolbar.pack_start(self._min_delta_widget)
@@ -92,12 +92,46 @@ class DendrogramViewWidget(gtk.VBox):
         self._click_notify = []
         self._compute_notify = []
     
+    @property
+    def data(self):
+        " Get the data used by the dendrogram of this widget "
+        # All of the following code is just running some checks for the user
+        # to warn of the case where different objects have different data
+        # arrays
+        try:
+            if self.cube.data.data != self._data.data: # Looks weird because we need to compare by memory address
+                print("Warning: widget's data is different than the cube data.")
+            if self.dendrogram:
+                assert(self.dendrogram.data.data == self._data.data)
+        except AttributeError:
+            # We cannot access the .data attribute on ndarray *views*, e.g. sliced arrays
+            pass
+        return self._data
+    @data.setter
+    def data(self, value):
+        # Data has changed:
+        self.clear_dendrogram()
+        self._data = value
+        # Reset the widget options:
+        self._min_flux_widget.set_range(np.nanmin(self._data)-0.1,np.nanmax(self._data))
+        self._min_delta_widget.set_range(0,np.nanmax(self._data))
+            
+    
     def make_dendrogram(self, min_flux, min_npix, min_delta):
         " Call this to manually set the parameters and create a new dendrogram"
         self._min_flux_widget.set_value(min_flux)
         self._min_npix_widget.set_value(min_npix)
         self._min_delta_widget.set_value(min_delta)
         self._compute_btn_clicked(self._compute_button, None)
+    
+    def clear_dendrogram(self):
+        self.dendrogram = None
+        self.dendro_plot = None
+        self.highlighter_clicked = None
+        self.highlighter_hover = None
+        self.axes.clear()
+        self.fig.canvas.draw()
+        self._redraw_all = True
     
     def on_click(self, func):
         """
@@ -140,8 +174,7 @@ class DendrogramViewWidget(gtk.VBox):
         self._redraw_highlights = True
 
     def _compute_btn_clicked(self, btn, event):
-        if not self.dendrogram:
-            self.dendrogram = astrodendro.Dendrogram(self.data, compute=False)
+        self.dendrogram = astrodendro.Dendrogram(self.data, compute=False)
         
         min_flux = self._min_flux_widget.get_value()
         min_npix = self._min_npix_widget.get_value()
