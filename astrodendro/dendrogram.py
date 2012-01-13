@@ -25,7 +25,7 @@
 
 import numpy as np
 
-from astrodendro.components import Branch, Leaf, DendrogramPlot, item_sort_key
+from astrodendro.components import Branch, Leaf, DendrogramPlot
 from astrodendro.newick import parse_newick
 try:
     import matplotlib.pylab
@@ -258,7 +258,7 @@ class Dendrogram(object):
 
         # Create trunk from objects with no ancestors
         self.trunk = [item for item in items.itervalues() if item.parent == None]
-        self.trunk.sort(key=item_sort_key) 
+        self.trunk.sort(key=Leaf.get_sort_key) 
 
     def get_leaves(self):
         return [i for i in self.items_dict.itervalues() if type(i) == Leaf]
@@ -351,7 +351,7 @@ class Dendrogram(object):
                     self.items_dict[idx] = l
             return items
 
-        self.trunk = construct_tree(tree)#sorted(construct_tree(tree), key=item_sort_key)
+        self.trunk = sorted(construct_tree(tree), key=Leaf.get_sort_key)
     
     def item_at(self, coords):
         " Get the item at the given pixel coordinate, or None "

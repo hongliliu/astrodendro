@@ -1,10 +1,6 @@
 import numpy as np
 import matplotlib as mpl
 
-def item_sort_key(item):
-    " Given a Branch or Leaf, this returns a key used to sort them for plotting "
-    return item.height # TODO: test recursive-fmax, npix, height, f_sum
-
 class Leaf(object):
 
     def __init__(self, coord, f, idx=None):
@@ -61,12 +57,22 @@ class Leaf(object):
         c,f = self.get_peak()
         return self, c, f
 
+    def get_sort_key(self):
+        """"
+        This returns a key used to sort child branches/leaves for plotting
+        This sorts plots according to the peak flux value found among each
+        item's children. Alternative sorting algorithms include:
+            self.npix
+            self.f_sum
+            self.height (not recommended!)
+        """
+        return self.get_peak_recursive()[2]
 
 class Branch(Leaf):
 
     def __init__(self, items, coord, f, idx=None):
         self.merge_level = f # Record the exact flux level that triggered creation of this branch
-        self.items = sorted(items, key=item_sort_key)
+        self.items = sorted(items, key=Leaf.get_sort_key)
         for item in items:
             item.parent = self
         Leaf.__init__(self, coord, f, idx=idx)
@@ -92,7 +98,7 @@ class Branch(Leaf):
         return np.sum([item.f_sum for item in self.items])
     @property
     def f_sum_self(self):
-        return np.sum(self.f)
+        return np.sum(self.f) 
 
 
     def add_footprint(self, image, level, recursive=True):
