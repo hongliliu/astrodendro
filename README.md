@@ -6,15 +6,16 @@ of Astronomical data. The use of dendrograms to represent Astronomical
 data is described in detail in [Goodman, A. (2009,
 Nature)](http://adsabs.harvard.edu/abs/2009Natur.457...63G).
 
-**DISCLAIMER**: The code has not yet been thoroughly tested and should **not** be considered science-ready.
+**DISCLAIMER**: The code has not yet been thoroughly tested.
 
 Screenshot
 ==========
 
 In this screenshot, you can see what the generated dendrograms look like, as
-returned by the plot() method described below.
+returned by the plot() method described below. A branch with five leaves is
+highlighted in red.
 
-![Screenshot](http://i.imgur.com/UOnMa.png)
+![Screenshot](http://i.imgur.com/QDePB.png)
 
 Installing
 ==========
@@ -108,16 +109,77 @@ An simple application is included which uses PyGTK, astrodendro and
 interactively generate dendrograms and see the correspondence between pixels in
 the data cube and items in the dendrogram. 
 
-Once a dendrogram has been created, you can click on any pixel in the cube to 
-highlight the dendrogram node that contains it, or conversely you can click on
-any item in the dendrogram to see which pixels it includes highlighted in the
-data cube. See screenshot above.
+![Screenshot](http://i.imgur.com/GIUwf.png)
 
 The viewer currently only loads FITS files.
 
 To launch the viewer, run the following command:
 
 	astrodendro-viewer fits_file.fits
+
+To use the viewer, specify the desired `min_flux`, `min_npix`, and `min_delta`
+values, and click on the __Compute__ button. A dendrogram will be generated.
+
+Once a dendrogram has been created, you can click on any pixel in the cube to 
+highlight the dendrogram node that contains it, or conversely you can click on
+any item in the dendrogram to see which pixels it includes highlighted in the
+data cube.  Double-click on any item in the dendrogram to automatically jump to
+the pixel with the highest flux value found among the selected item and its 
+children.  
+
+The viewer also contains an integrated IPython shell that can be used to
+manipulate the dendrogram and associated data cube. Any Python commands can be
+used. The following data objects are automatically added to the local scope:
+
+* `cube`: The astrocube data cube (a `DataCube` object). You can access the cube
+  data using `cube.data`
+
+* `cube_view`: The `CubeViewWidget` used to display the data cube. You can read
+  and write to `cube_view.x`, `cube_view.y`, `cube_view.z`. The `z` value gets
+  or sets the z coordinate of the X-Y slice currently visible on the left side
+  of the viewer, and the `x` and `y` properties get set to the coordinates of
+  any data cube pixel that you click on.
+
+* `dendro_view`: The `DendrogramViewWidget` object used to display the 
+  dendrogram
+
+* `dendrogram`: The `Dendrogram` object itself.
+
+In addition, the following commands are defined for convenience. These commands
+should be preferred over direct manipulation of the objects above.
+
+* `create_highlighter(color)`: Creates a highlighter useful for coloring in
+  both dendrogram objects and the data pixels associated with that object in
+  the specified color. The returned object has the following methods:
+  * `highlight_coords(coords)`: Highlight whatever dendrogram item contains
+    the pixel at `coords`, which must be an (x,y,z) tuple.
+  * `highlight_item(item)`: Highlight the given `Leaf` or `Branch` and the 
+    associated pixels. Pass item=None to clear this highlighting.
+
+* `set_color_map(cmap = CubeViewWidget.default_cmap)`: Use to change the color
+  map that defines how the data cube is shown. For example, use
+  `set_color_map("bone")` to show the data cube in greyscale so that colored
+  highlights are more visible. Accepts any matplotlib
+  [color map](http://www.scipy.org/Cookbook/Matplotlib/Show_colormaps).
+
+* `set_data(data)`: Replace the data in the data cube with the given numpy
+  ndarray, and clear the dendrogram. Useful for adding noise to the data, etc.
+
+* `make_dendrogram(min_flux, min_npix, min_delta)`: Compute a new dendrogram.
+
+* `export_pdf(filename, title="default", subtitle="default",
+  include_cube_slice=True)`: Export a two-page PDF, with the currently visible
+  slice of the data cube on the first page, and the current dendrogram on the
+  second page. A title and subtitle including the dendrogram parameters will
+  automatically added, but you can change them using the `title` and `subtitle`
+  arguments. Set `include_cube_slice=False` if you only want to export the
+  dendrogram.
+
+* `export_png(filename_cube, filename_dendro)`: Essentially exports a
+  screenshot of the data cube and/or the dendrogram. Size of the exported
+  PNG images depends on the current window size of the viewer program.
+  Either .png filename may be `None` if you don't want to export one or the
+  other. In general, PDF export is recommended over .PNG export.
 
 Import/Export
 =============

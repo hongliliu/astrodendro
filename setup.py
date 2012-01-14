@@ -8,7 +8,7 @@ except ImportError:  # Python 2.x
     from distutils.command.build_py import build_py
 
 setup(name='Astronomical Dendrograms',
-      version='0.2.0',
+      version='0.3.0',
       description='Astronomical Dendrograms',
       author='Braden MacDonald and Thomas Robitaille',
       author_email='braden@bradenmacdonald.com',
@@ -18,7 +18,7 @@ setup(name='Astronomical Dendrograms',
       requires=['numpy'],
       extras_require = {
           'Plotting':  ['matplotlib'],
-          'GUI': ['matplotlib', 'pygtk', 'ipython'],
+          'GUI': ['matplotlib', 'pygtk', 'ipython', 'astrocube'],
       },
       cmdclass={'build_py': build_py},
       keywords=['Scientific/Engineering'],
