@@ -210,9 +210,11 @@ class ConsoleView(gtk.TextView):
     self.text_buffer.insert(self.text_buffer.get_end_iter(), segment)
 
     if segments:
-      ansi_tags = self.color_pat.findall(text)
+      ansi_tags = [str(t) for t in self.color_pat.findall(text)]
+      print("segments: {0}\nansi_tags: {1}".format(segments, ansi_tags))
       for tag in ansi_tags:
         i = segments.index(tag)
+        print("insert_with_tags_by_name(iter, {0}, {1})".format(segments[i+1], tag))
         self.text_buffer.insert_with_tags_by_name(self.text_buffer.get_end_iter(),
                                              segments[i+1], tag)
         segments.pop(i)
