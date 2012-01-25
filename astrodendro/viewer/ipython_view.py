@@ -153,13 +153,13 @@ class IterableIPShell:
 
   def complete(self, line):
     split_line = self.complete_sep.split(line)
-    possibilities = self.IP.complete(split_line[-1])
+    possibilities = self.IP.complete(split_line[-1])[1]
     if possibilities:
-      common_prefix = reduce(self._commonPrefix, possibilities[1])
+      common_prefix = reduce(self._commonPrefix, possibilities)
       completed = line[:-len(split_line[-1])]+common_prefix
     else:
       completed = line
-    return completed, possibilities[1]
+    return completed, possibilities
 
   def _commonPrefix(self, str1, str2):
     for i in range(len(str1)):
@@ -289,7 +289,8 @@ class IPythonView(ConsoleView, IterableIPShell):
     self.connect('key_press_event', self.keyPress)
     #self.execute()
     self.cout.truncate(0)
-    self.showPrompt(self.IP.hooks.generate_prompt(self.iter_more))
+    self.prompt = self.IP.hooks.generate_prompt(self.iter_more)
+    self.showPrompt(self.prompt)
     self.interrupt = False
 
   def raw_input(self, prompt=''):
@@ -314,16 +315,25 @@ class IPythonView(ConsoleView, IterableIPShell):
       return True
     elif event.keyval == gtk.keysyms.Tab:
       if not self.getCurrentLine().strip():
-        return False
-      completed, possibilities = self.complete(self.getCurrentLine())
-      if len(possibilities) > 1:
-        slice = self.getCurrentLine()
-        self.write('\n')
-        for symbol in possibilities:
-          self.write(symbol+'\n')
-        self.showPrompt(self.prompt)
-      self.changeLine(completed or slice)
-      return True
+        # No current line so display non-hidden locals:
+        possibilities = [k for k in sorted(self.IP.user_ns.keys()) if k[0] != "_"]
+        if len(possibilities) > 1:
+          self.write('\n')
+          for symbol in possibilities:
+            self.write(symbol+'\n')
+          self.showPrompt(self.prompt)
+        self.changeLine("")
+        return True
+      else:
+        completed, possibilities = self.complete(self.getCurrentLine())
+        if len(possibilities) > 1:
+          slice = self.getCurrentLine()
+          self.write('\n')
+          for symbol in possibilities:
+            self.write(symbol+'\n')
+          self.showPrompt(self.prompt)
+        self.changeLine(completed or slice)
+        return True
 
   def _processLine(self):
     self.history_pos = 0
