@@ -150,16 +150,20 @@ class DendroViewer:
                        d=self.dendro_view.dendrogram.min_delta,
                        )
             if include_cube_slice:
-                cube_subtitle = "@ {v:.2f} km/s (z={z}). {rest}".format(
-                    v=self.cube.velocity_at(self.cube_view.z),
-                    z=self.cube_view.z,
-                    rest=subtitle,
-                    )
+                if self.cube.has_coords:
+                    cube_subtitle = "@ {v:.2f} km/s (z={z}). {rest}".format(
+                        v=self.cube.velocity_at(self.cube_view.z),
+                        z=self.cube_view.z,
+                        rest=subtitle,
+                        )
+                else:
+                    cube_subtitle = "@ z={z}. {rest}".format(z=self.cube_view.z, rest=subtitle)
         
         export_size = (10,7.5) # in inches
         
         if include_cube_slice:
             cfig = self.cube_view.fig
+            self.cube_view._check_redraw()
             old_size_cfig = (cfig.get_figwidth(), cfig.get_figheight())
             cfig.set_size_inches(*export_size)
             if title: ctitle = cfig.suptitle(title, weight='heavy', size='large')
