@@ -9,6 +9,7 @@ class Leaf(object):
         self.fmin, self.fmax = f, f
         self.idx = idx
         self.parent = None
+        self._ancestor = None # Cached ancestor, if any
 
     @property
     def npix(self):
@@ -25,10 +26,33 @@ class Leaf(object):
     
     @property
     def ancestor(self):
+        """
+        Find the ancestor of this leaf/branch recursively. Always returns an
+        object (may return self if the object has no parent).
+        Results are partially cached to reduce recursion depth.
+        The caching assumes that once an object has been given a parent, that
+        parent will never change.
+        
+        This method should be equivalent to:
+            if self.parent == None:
+                return self
+            else:
+                return self.parent.ancestor
+        """
         if self.parent == None:
             return self
-        else:
-            return self.parent.ancestor
+        if not self._ancestor:
+            self._ancestor = self.parent
+        while self._ancestor.parent:
+            # Use a loop rather than recursion to update
+            # the cached ancestor, if needed:
+            a = self._ancestor
+            if a._ancestor:
+                self._ancestor = a._ancestor # Update our cached value
+            else:
+                self._ancestor = a.parent
+        return self._ancestor
+        
 
     def add_point(self, coord, f):
         "Add point to current leaf"
@@ -76,6 +100,7 @@ class Branch(Leaf):
         for item in items:
             item.parent = self
         Leaf.__init__(self, coord, f, idx=idx)
+        self._children_peak_result = None # cached result of get_peak_recursive for child with highest peak
 
     @property
     def npix(self):
@@ -118,15 +143,21 @@ class Branch(Leaf):
         Return the item, coordinate, and flux value of the pixel with highest
         intensity among this branch and its children.
         """
+        if self._children_peak_result: # If we have cached the result of peak flux among children:
+            ci, cc, cf = self._children_peak_result
+        else:
+            # get Child Item, Child peak Coords, Child Flux for child with highest max. flux
+            ci, cc, cf = self.items[0].get_peak_recursive()
+            for child in self.items[1:]:
+                ci_try, cc_try, cf_try = child.get_peak_recursive() 
+                if cf > cf:
+                    ci, cc, cf = ci_try, cc_try, cf_try
+            self._children_peak_result = ci, cc, cf
         imax = np.argmax(self.f)
-        item = self
-        c, f = self.coords[imax], self.f[imax]
-        for child in self.items:
-            # get Child Item, Child peak Coords, Child Flux:
-            ci, cc, cf = child.get_peak_recursive() 
-            if cf > f:
-                item, c, f = ci, cc, cf
-        return item, c, f
+        if cf >= self.f[imax]: # A child has a higher flux than this branch does:
+            return ci, cc, cf
+        else: # This may happen sometimes if min_delta is nonzero:
+            return self, self.coords[imax], self.f[imax]
 
 
 class DendrogramPlot():

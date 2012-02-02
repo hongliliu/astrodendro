@@ -43,6 +43,8 @@ class TestHDF5(unittest.TestCase):
             self.assertItemsEqual(item1.coords, item2.coords)
             self.assertItemsEqual(item1.f, item2.f)
             self.assertEqual(type(item1), type(item2))
+            # Compare the coordinates and flux values of all reported peak pixels:
+            self.assertEqual(item1.get_peak_recursive()[1:], item2.get_peak_recursive()[1:])
             if type(item2) == Branch:
                 self.assertEqual(item1.merge_level, item2.merge_level)        
 
