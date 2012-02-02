@@ -251,7 +251,8 @@ class Dendrogram(object):
                   if item.parent is None and type(item) == Leaf
                   and (item.npix < minimum_npix or item.fmax - item.fmin < minimum_delta)]
         for idx in remove:
-            items.pop(idx)
+            removed = items.pop(idx)
+            removed.add_footprint(self.index_map, 0)
             
         # Save a list of all items accessible by ID
         self.items_dict = items
