@@ -150,7 +150,7 @@ class Branch(Leaf):
             ci, cc, cf = self.items[0].get_peak_recursive()
             for child in self.items[1:]:
                 ci_try, cc_try, cf_try = child.get_peak_recursive() 
-                if cf > cf:
+                if cf_try > cf:
                     ci, cc, cf = ci_try, cc_try, cf_try
             self._children_peak_result = ci, cc, cf
         imax = np.argmax(self.f)
