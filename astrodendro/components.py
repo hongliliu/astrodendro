@@ -266,14 +266,14 @@ class DendrogramPlot():
         if not func in self._highlight_change_notify:
             self._highlight_change_notify.append(func)
     
-    def create_highlighter(self, color='red', alpha=1):
+    def create_highlighter(self, color='red', alpha=1, line_width_extra=1):
         """
         Set up a plot for interactive highlighting.
         This will return a Highlighter object with a highlight(item)
         method; simply call that method to highlight any given item in the 
         color specified when the highlighter was created.
         """
-        h = self._Highlighter(self, color, alpha, self.line_width+1)
+        h = self._Highlighter(self, color, alpha, self.line_width+line_width_extra)
         self.highlighters_active.append(h)
         self.axes.add_collection(h.line_collection)
         return h
