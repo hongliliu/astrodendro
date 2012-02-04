@@ -74,10 +74,15 @@ class Leaf(object):
         return "%i:%.3f" % (self.idx, self.height)
 
     def get_peak(self):
-        imax = np.argmax(self.f)
-        return self.coords[imax], self.f[imax]
+        " Return the coordinate and value of the pixel with maximum value "
+        return self.coords[self.f.index(self.fmax)], self.fmax
     
-    def get_peak_recursive(self): # Preserve same interface as Branch, below
+    def get_peak_recursive(self):
+        """
+        Return the item, coordinate, and flux value of the pixel with highest
+        intensity found within this leaf.
+        This method exactly matches the more detailed method on Branch()
+        """
         c,f = self.get_peak()
         return self, c, f
 
@@ -153,11 +158,13 @@ class Branch(Leaf):
                 if cf_try > cf:
                     ci, cc, cf = ci_try, cc_try, cf_try
             self._children_peak_result = ci, cc, cf
-        imax = np.argmax(self.f)
-        if cf >= self.f[imax]: # A child has a higher flux than this branch does:
+        if cf >= self.fmax: # A child has a higher flux than this branch does:
             return ci, cc, cf
-        else: # This may happen sometimes if min_delta is nonzero:
-            return self, self.coords[imax], self.f[imax]
+        else:
+            # This branch directly contains a pixel with higher flux than any
+            # children have. This happens sometimes if min_delta and/or
+            # min_npix are nonzero
+            return self, self.coords[self.f.index(self.fmax)], self.fmax
 
 
 class DendrogramPlot():

@@ -8,7 +8,7 @@ except ImportError:  # Python 2.x
     from distutils.command.build_py import build_py
 
 setup(name='Astronomical Dendrograms',
-      version='0.4.0',
+      version='0.4.1',
       description='Astronomical Dendrograms',
       author='Braden MacDonald and Thomas Robitaille',
       author_email='braden@bradenmacdonald.com',
