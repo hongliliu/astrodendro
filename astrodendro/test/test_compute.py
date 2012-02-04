@@ -63,7 +63,27 @@ class Test3DimensionalData(unittest.TestCase):
         d = Dendrogram(self.data, minimum_npix=8, minimum_delta=0.3, minimum_flux=1.4, verbose=False)
         
         num_leaves = len(d.get_leaves())
-        self.assertEqual(num_leaves,55)
+        self.assertEqual(num_leaves,55) # This data with these parameters should produce 55 leaves
+        
+        # Now check every pixel in the data cube (this takes a while).
+        # The following loop construct may look crazy, but it is a more
+        # efficient way of iterating through the array than using a regular
+        # nditer with multi_index.
+        for coord in [tuple(c) for c in np.array(np.unravel_index( np.arange(self.data.size), self.data.shape)).transpose()]:
+            f = self.data[coord]
+            if (f < 1.4):
+                self.assertEqual(d.item_at(coord), None)
+            else:
+                item = d.item_at(coord)
+                if item:
+                    # The current pixel is associated with part of the dendrogram.
+                    self.assertIn(coord, item.coords, "Pixel at {0} is claimed to be part of {1}, but that item does not contain the coordinate {0}!".format(coord, item))
+                    fmax_item, _, fmax = item.get_peak_recursive()
+                    if fmax_item is item:
+                        # The current pixel is the peak pixel in this item
+                        pass
+                    else:
+                        self.assertTrue(fmax >= f)
 
 if __name__ == '__main__':
     unittest.main()
