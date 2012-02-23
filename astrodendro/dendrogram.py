@@ -24,13 +24,15 @@
 # - An ancestor is the largest structure that an item is part of
 
 import numpy as np
-
-from astrodendro.components import Branch, Leaf, DendrogramPlot
-from astrodendro.newick import parse_newick
+from .components import Branch, Leaf
+from .newick import parse_newick
 try:
     import matplotlib.pylab
+    from .plot import RecursiveSortPlot, SpatialCoordPlot
+    _plotting_enabled = True
 except ImportError:
     # The plot method won't work without matplotlib, but everything else will be fine
+    _plotting_enabled = False
     pass
 
 
@@ -258,14 +260,19 @@ class Dendrogram(object):
         self.items_dict = items
 
         # Create trunk from objects with no ancestors
-        self.trunk = [item for item in items.itervalues() if item.parent == None]
-        self.trunk.sort(key=Leaf.get_sort_key) 
+        self.trunk = [item for item in items.itervalues() if item.parent == None] 
+
+    @property
+    def all_items(self):
+        " Return a flattened iterable containing all items in the dendrogram "
+        return self.items_dict.itervalues()
 
     def get_leaves(self):
+        " Return a flattened list of all leaves in the dendrogram "
         return [i for i in self.items_dict.itervalues() if type(i) == Leaf]
 
     def to_newick(self):
-        return "(%s);" % ','.join([item.to_newick() for item in self.trunk])
+        return "(%s);" % ','.join([item.newick for item in self.trunk])
 
     def to_hdf5(self, filename):
 
@@ -352,7 +359,7 @@ class Dendrogram(object):
                     self.items_dict[idx] = l
             return items
 
-        self.trunk = sorted(construct_tree(tree), key=Leaf.get_sort_key)
+        self.trunk = construct_tree(tree)
     
     def item_at(self, coords):
         " Get the item at the given pixel coordinate, or None "
@@ -371,20 +378,65 @@ class Dendrogram(object):
     def min_delta(self):
         return self._params_used['min_delta']
     
-    def plot(self):
+    def plot(self, **kwargs):
         """
         Plot a Dendrogram using matplotlib.
         Works with IPython's pylab mode, so you can just type: dendrogram.plot()
         Returns a DendrogramPlot object 
         """
+        if not _plotting_enabled:
+            raise Exception("Plotting is not available without matplotlib.")
         axes = matplotlib.pylab.gca()
-        plot = self.make_plot(axes)
+        plot = self.make_plot(axes, **kwargs)
         matplotlib.pylab.draw_if_interactive()
         return plot
 
-    def make_plot(self, axes, color='blue', line_width=1, spacing=5):
+    def make_plot(self, axes, style='rfmax', color=(0,0,0.2,1), line_width=1, **kwargs):
         """
-        Returns a DendrogramPlot object that can draw a matplotlib figure
-        The DendrogramPlot object also has a useful get_item_at(x,y) method.
+        Plot the dendrogram in 2D on the given matplotlib axes.
+        
+        style must be one of the following:
+            'rfmax': sort the dendrogram by maximum flux found among all child items.
+            'x_coord': plot items according to the X coordinate of the leaf item with peak flux value
+            'y_coord': same, but uses Y coordinate
+            'z_coord': same, but uses Y coordinate
+        
+        color can be:
+            1. An RGBA tuple, e.g. for red color=(1,0,0,1)
+            2. "npix" to color such that bigger items are light blue,
+               smaller ones black.
+            3. "f_max" to color such that bigger items are light blue,
+               smaller ones black, but using the sum of flux values
+               rather than just the number of pixels.
+            4. Any lambda method or callable to compute the color for each item.
+               The method must return an RGBA tuple,
+        
+        This returns a DendrogramPlot object which has two main methods:
+            create_highlighter(color='red', alpha=1, line_width_extra=1):
+                Create a highlighter object that can be used to color in items
+                on the plot with different colors. The returned object will
+                have a .highlight(item) method.
+            
+            item_at(x,y):
+                Return the item (or None) associated with the given 2D coordinate on the axes.
         """
-        return DendrogramPlot(self.trunk, axes=axes, color=color, line_width=line_width, spacing=spacing)
+        if not _plotting_enabled:
+            raise Exception("Plotting is not available without matplotlib.")
+        if color == "npix":
+            max_npix = max(i.npix_self for i in self.all_items)
+            color_lambda = lambda item: (0,0,1*(float(item.npix_self)/max_npix),1)
+        elif color == "fsum":
+            max_fsum = max(i.f_sum_self for i in self.all_items)
+            color_lambda = lambda item: (0,0,1*(float(item.f_sum_self)/max_fsum),1)
+        elif not hasattr(color, '__call__'):
+            color_lambda = lambda _: color
+        else:
+            color_lambda = color
+        if style == 'rfmax':
+            return RecursiveSortPlot(dendrogram=self, axes=axes, color_lambda=color_lambda, line_width=line_width, **kwargs)
+        elif style[1:] == '_coord':
+            coord_indices = {'x':0, 'y':1, 'z':2}
+            coord_index = coord_indices[style[0]]
+            return SpatialCoordPlot(dendrogram=self, axes=axes, color_lambda=color_lambda, line_width=line_width, coord_index=coord_index, **kwargs)
+        else:
+            raise Exception("Invalid plot style requested.")
