@@ -15,7 +15,7 @@ class DendrogramPlot:
     -> _plot_item(item, line_collection, include_children)
     """
 
-    def __init__(self, axes, line_width):
+    def __init__(self, axes, line_width, autoscale=True):
         """
         Set up the given matplotlib axes for plotting.
         This will create a line_collection object containing the lines and colors
@@ -48,7 +48,7 @@ class DendrogramPlot:
 
             axes.set_xmargin(0.05)
             axes.set_ymargin(0.05)
-            axes.autoscale()
+            axes.autoscale(autoscale)
 
     ########## Subclasses need to implement these: #################
     def _plot_trunk(self):
@@ -117,7 +117,7 @@ class RecursiveSortPlot(DendrogramPlot):
     A plot that sorts the dendrogram according to the max. flux value found
     among that branch and its children
     """
-    def __init__(self, dendrogram, color_lambda, axes, line_width, spacing=5):
+    def __init__(self, dendrogram, color_lambda, axes, line_width, spacing=5, autoscale=True):
         
         self._dendrogram = dendrogram
         self._color_lambda = color_lambda
@@ -137,7 +137,7 @@ class RecursiveSortPlot(DendrogramPlot):
         # Build our map of the positions of each item:
         self._build_rect_map(dendrogram.trunk, sort_by=lambda item: item.get_peak_recursive()[2])
         
-        DendrogramPlot.__init__(self, axes=axes, line_width=line_width)
+        DendrogramPlot.__init__(self, axes=axes, line_width=line_width, autoscale=autoscale)
 
     def _build_rect_map(self, items, sort_by):
         items_sorted = sorted(items, key=sort_by)
@@ -216,11 +216,11 @@ class SpatialCoordPlot(DendrogramPlot):
     coord_axis: set to 0 for X, 1 for Y, etc.
     """
 
-    def __init__(self, dendrogram, color_lambda, axes, line_width, coord_index = 0):
+    def __init__(self, dendrogram, color_lambda, axes, line_width, coord_index = 0, autoscale=True):
         self.dendrogram = dendrogram
         self.coord_index = coord_index
         self._color_lambda = color_lambda
-        DendrogramPlot.__init__(self, axes=axes, line_width=line_width)
+        DendrogramPlot.__init__(self, axes=axes, line_width=line_width, autoscale=autoscale)
 
     def _plot_trunk(self):
         (lines, colors,) = ([], [])
@@ -263,11 +263,11 @@ class SpatialCoordPlot(DendrogramPlot):
 
 class FuturePlot(DendrogramPlot):
     """ A template for writing new styles of dendrogram plots """
-    def __init__(self, axes, line_width, other_args_to_add):
+    def __init__(self, axes, line_width, other_args_to_add, autoscale=True):
         # Set up plot here
         
         # The following will in turn set up the plotting axes, then call _plot_trunk
-        DendrogramPlot.__init__(self, axes=axes, line_width=line_width)
+        DendrogramPlot.__init__(self, axes=axes, line_width=line_width, autoscale=autoscale)
     def _plot_trunk(self):
         """ Plot the whole dendrogram. Returns (lines, colors). """
         raise Exception("This type of plot has not implemented _plot_trunk() !")

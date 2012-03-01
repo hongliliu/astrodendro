@@ -391,7 +391,7 @@ class Dendrogram(object):
         matplotlib.pylab.draw_if_interactive()
         return plot
 
-    def make_plot(self, axes, style='rfmax', color=(0,0,0.2,1), line_width=1, **kwargs):
+    def make_plot(self, axes, style='rfmax', color=(0,0,0.2,1), line_width=1, autoscale=True, **kwargs):
         """
         Plot the dendrogram in 2D on the given matplotlib axes.
         
@@ -403,9 +403,9 @@ class Dendrogram(object):
         
         color can be:
             1. An RGBA tuple, e.g. for red color=(1,0,0,1)
-            2. "npix" to color such that bigger items are light blue,
+            2. "npix" to color such that bigger items are red,
                smaller ones black.
-            3. "f_max" to color such that bigger items are light blue,
+            3. "fsum" to color such that bigger items are red,
                smaller ones black, but using the sum of flux values
                rather than just the number of pixels.
             4. Any lambda method or callable to compute the color for each item.
@@ -424,16 +424,16 @@ class Dendrogram(object):
             raise Exception("Plotting is not available without matplotlib.")
         if color == "npix":
             max_npix = max(i.npix_self for i in self.all_items)
-            color_lambda = lambda item: (0,0,1*(float(item.npix_self)/max_npix),1)
+            color_lambda = lambda item: (1*(float(item.npix_self)/max_npix),0,0,1)
         elif color == "fsum":
             max_fsum = max(i.f_sum_self for i in self.all_items)
-            color_lambda = lambda item: (0,0,1*(float(item.f_sum_self)/max_fsum),1)
+            color_lambda = lambda item: (1*(float(item.f_sum_self)/max_fsum),0,0,1)
         elif not hasattr(color, '__call__'):
             color_lambda = lambda _: color
         else:
             color_lambda = color
         if style == 'rfmax':
-            return RecursiveSortPlot(dendrogram=self, axes=axes, color_lambda=color_lambda, line_width=line_width, **kwargs)
+            return RecursiveSortPlot(dendrogram=self, axes=axes, color_lambda=color_lambda, line_width=line_width, autoscale=autoscale, **kwargs)
         elif style[1:] == '_coord':
             coord_indices = {'x':0, 'y':1, 'z':2}
             coord_index = coord_indices[style[0]]
