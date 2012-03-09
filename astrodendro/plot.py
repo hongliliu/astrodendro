@@ -261,6 +261,38 @@ class SpatialCoordPlot(DendrogramPlot):
         """ Returns the item at the given point on the plot, or None """
         raise Exception("This type of plot has not implemented item_at() !")
 
+class SpatialMeanCoordPlot(SpatialCoordPlot):
+    """
+    Create a plot that places leaves at the position of the mean X coordinate
+    of the pixels in the leaf/branch. (Or use Y coordinate, or Z, ...)
+    
+    coord_axis: set to 0 for X, 1 for Y, etc.
+    """
+    def _plot_item_recursive(self, item, lines, colors):
+        """
+        Plots an item, and all children recursively.
+        Adds the item's lines and colors to the lists given.
+        Returns the mean x value of the item plotted.
+        """
+        color = self._color_lambda(item)
+        ymin = item.parent.merge_level if item.parent else min([i.fmin for i in self.dendrogram.trunk])
+        if type(item) is Leaf:
+            ymax = item.peak[1] # .peak returns (peak coords, peak flux value)
+            x = sum([c[self.coord_index] for c in item.coords])/item.npix
+            lines.append([(x, ymin), (x, ymax)])
+            colors.extend([color])
+            return x
+        else:
+            y = item.merge_level
+            #xmean = (xmin + xmax) // 2
+            xmean = sum([c[self.coord_index] for c in item.coords])/item.npix_self
+            x_values = [ self._plot_item_recursive(i, lines, colors) for i in item.items ]
+            (xmin, xmax,) = (min(x_values+[xmean]), max(x_values+[xmean]))
+            lines.append([(xmin, y), (xmax, y)])
+            lines.append([(xmean, ymin), (xmean, y)])
+            colors.extend([color, color])
+            return xmean
+
 class FuturePlot(DendrogramPlot):
     """ A template for writing new styles of dendrogram plots """
     def __init__(self, axes, line_width, other_args_to_add, autoscale=True):

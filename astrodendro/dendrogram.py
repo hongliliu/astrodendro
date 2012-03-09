@@ -28,7 +28,7 @@ from .components import Branch, Leaf
 from .newick import parse_newick
 try:
     import matplotlib.pylab
-    from .plot import RecursiveSortPlot, SpatialCoordPlot
+    from .plot import RecursiveSortPlot, SpatialCoordPlot, SpatialMeanCoordPlot
     _plotting_enabled = True
 except ImportError:
     # The plot method won't work without matplotlib, but everything else will be fine
@@ -438,5 +438,9 @@ class Dendrogram(object):
             coord_indices = {'x':0, 'y':1, 'z':2}
             coord_index = coord_indices[style[0]]
             return SpatialCoordPlot(dendrogram=self, axes=axes, color_lambda=color_lambda, line_width=line_width, coord_index=coord_index, **kwargs)
+        elif style[1:] == '_mean':
+            coord_indices = {'x':0, 'y':1, 'z':2}
+            coord_index = coord_indices[style[0]]
+            return SpatialMeanCoordPlot(dendrogram=self, axes=axes, color_lambda=color_lambda, line_width=line_width, coord_index=coord_index, **kwargs)
         else:
             raise Exception("Invalid plot style requested.")
