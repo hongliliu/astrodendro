@@ -26,6 +26,7 @@
 import numpy as np
 from .components import Branch, Leaf
 from .newick import parse_newick
+from .progressbar import AnimatedProgressBar
 try:
     import matplotlib.pylab
     from .plot import RecursiveSortPlot, SpatialCoordPlot, SpatialMeanCoordPlot
@@ -59,7 +60,8 @@ class Dendrogram(object):
         coords = np.array(np.unravel_index( np.arange(self.data.size)[keep] , self.data.shape)).transpose()
         
         if verbose:
-            print "Number of points above minimum: %i" % flux_values.size
+            print("Generating dendrogram using {:,} of {:,} pixels ({}% of data)".format(flux_values.size, self.data.size, (100*flux_values.size/self.data.size)))
+            progress_bar = AnimatedProgressBar(end=flux_values.size, width=40, fill='=', blank=' ')
             
         # Define index array indicating what item each cell is part of
         # We expand each dimension by one, so the last value of each
@@ -92,9 +94,10 @@ class Dendrogram(object):
             coord = tuple(coords[i])
             
             # Print stats
-            if verbose and count % 10000 == 0:
-                print("%i..." % count)
             count += 1
+            if verbose and (count % 100 == 0):
+                progress_bar + 100
+                progress_bar.show_progress()
 
             # Check if point is adjacent to any leaf
             # We don't worry about the edges, because overflow or underflow in 
@@ -245,8 +248,10 @@ class Dendrogram(object):
                         removed.add_footprint(self.index_map, idx)
 
 
-        if verbose and not count % 10000 == 0:
-            print "%i..." % count
+        if verbose:
+            progress_bar.progress = 100 # Done
+            progress_bar.show_progress()
+            print("") # newline
 
         # Remove orphan leaves that aren't large enough
         remove = [idx for idx,item in items.iteritems()
@@ -255,7 +260,7 @@ class Dendrogram(object):
         for idx in remove:
             removed = items.pop(idx)
             removed.add_footprint(self.index_map, 0)
-            
+    
         # Save a list of all items accessible by ID
         self.items_dict = items
 
