@@ -76,6 +76,16 @@ class DendrogramViewWidget(gtk.VBox):
         self._compute_button.connect("button-press-event", self._compute_btn_clicked)
         self._dendro_toolbar.pack_start(self._compute_button)
         
+        # # # Plot style:
+        self._dendro_toolbar.pack_start(gtk.Label("Plot style: "))
+        self._plot_style_widget = gtk.combo_box_new_text()
+        plot_styles = ['rfmax', 'x_mean', 'y_mean', 'z_mean']
+        for s in plot_styles:
+            self._plot_style_widget.append_text(s)
+        self._plot_style_widget.set_active(0)
+        self._plot_style_widget.connect("changed", self.setup_plot)
+        self._dendro_toolbar.pack_start(self._plot_style_widget)
+        
         self.pack_start(self._dendro_toolbar, False, False)
         
         
@@ -155,17 +165,47 @@ class DendrogramViewWidget(gtk.VBox):
     def _figure_mouseup(self, event):
         self._is_mouse_down = False
         if self.highlighter_clicked:
-            item = self.dendro_plot.item_at(event.xdata, event.ydata)
+            try:
+                item = self.dendro_plot.item_at(event.xdata, event.ydata)
+            except NotImplementedError:
+                item = None
             if self.highlighter_clicked.highlight(item):
                 self._redraw_highlights = True
             for handler in self._click_notify:
                 handler(item)
     def _figure_mousemoved(self, event):
         if self.highlighter_hover:
-            item = self.dendro_plot.item_at(event.xdata, event.ydata)
-            if self.highlighter_hover.highlight(item): # return true if changed:
-                self._redraw_highlights = True
+            try:
+                item = self.dendro_plot.item_at(event.xdata, event.ydata)
+                if self.highlighter_hover.highlight(item): # return true if changed:
+                    self._redraw_highlights = True
+            except NotImplementedError:
+                pass
         # Note other mouse motion updates get processed below in _NavigationToolbar.mouse_move
+
+    def setup_plot(self, _=None):
+        wants_style = self._plot_style_widget.get_active_text()
+        if self.dendrogram:
+            old_highlighters = self.dendro_plot.highlighters_active if self.dendro_plot else []
+            self.axes.clear()
+            self._redraw_all = True
+            self.dendro_plot = self.dendrogram.make_plot(self.axes, style=wants_style)
+            self.dendro_plot.on_highlight_change(self._highlights_changed)
+            if not self.highlighter_clicked:
+                self.highlighter_clicked = self.dendro_plot.create_highlighter('red', alpha=1)
+                self.highlighter_hover = self.dendro_plot.create_highlighter('green', alpha=0.7)
+            # The first time we render this diagram, we call the draw() method:
+            self.fig.canvas.draw()
+            # From now on we use our more efficient rendered triggered by _redraw_all: 
+            self._redraw_all = True
+            # Update any highlighters that were attached to the previous plot:
+            for h in old_highlighters:
+                h.plot = self.dendro_plot # Update the plot
+                item = h.item
+                h.clear()
+                h.highlight(item) # Rebuild the highlighted line segments
+                self.dendro_plot.highlighters_active.append(h)
+                self.dendro_plot.axes.add_collection(h.line_collection)
 
     def _figure_resized(self, event):
         self._redraw_all = True
@@ -180,15 +220,7 @@ class DendrogramViewWidget(gtk.VBox):
         min_npix = self._min_npix_widget.get_value()
         min_delta= self._min_delta_widget.get_value()
         self.dendrogram.compute(minimum_flux=min_flux, minimum_npix=min_npix, minimum_delta=min_delta)
-        self.axes.clear()
-        self.dendro_plot = self.dendrogram.make_plot(self.axes)
-        self.highlighter_clicked = self.dendro_plot.create_highlighter('red', alpha=1)
-        self.highlighter_hover = self.dendro_plot.create_highlighter('green', alpha=0.7)
-        self.dendro_plot.on_highlight_change(self._highlights_changed)
-        # The first time we render this diagram, we call the draw() method:
-        self.fig.canvas.draw()
-        # From now on we use our more efficient rendered triggered by _redraw_all: 
-        self._redraw_all = True
+        self.setup_plot()
         for handler in self._compute_notify:
             handler(self.dendrogram)
 
@@ -253,7 +285,10 @@ class DendrogramViewWidget(gtk.VBox):
     
             dendro = self.get_parent().dendro_plot
             if dendro:
-                item = dendro.item_at(event.xdata, event.ydata)
+                try:
+                    item = dendro.item_at(event.xdata, event.ydata)
+                except NotImplementedError:
+                    item = None
                 if type(item) == Branch:
                     msg = "Branch with {0} children; has {1:,} ({2:,}) pixels".format(len(item.items), item.npix_self, item.npix)
                 elif type(item) == Leaf:

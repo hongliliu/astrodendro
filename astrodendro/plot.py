@@ -259,7 +259,7 @@ class SpatialCoordPlot(DendrogramPlot):
 
     def item_at(self, x, y):
         """ Returns the item at the given point on the plot, or None """
-        raise Exception("This type of plot has not implemented item_at() !")
+        raise NotImplementedError("This type of plot has not implemented item_at() !")
 
 class SpatialMeanCoordPlot(SpatialCoordPlot):
     """
@@ -302,10 +302,10 @@ class FuturePlot(DendrogramPlot):
         DendrogramPlot.__init__(self, axes=axes, line_width=line_width, autoscale=autoscale)
     def _plot_trunk(self):
         """ Plot the whole dendrogram. Returns (lines, colors). """
-        raise Exception("This type of plot has not implemented _plot_trunk() !")
+        raise NotImplementedError("This type of plot has not implemented _plot_trunk() !")
     def _plot_item(self, item):
         """ Plot an item and its children. Returns (lines, colors). """
-        raise Exception("This type of plot has not implemented _plot_item() !")
+        raise NotImplementedError("This type of plot has not implemented _plot_item() !")
     def item_at(self,x,y):
         """ Returns the item at the given point on the plot, or None """
-        raise Exception("This type of plot has not implemented item_at() !")
+        raise NotImplementedError("This type of plot has not implemented item_at() !")
