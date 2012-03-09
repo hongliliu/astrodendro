@@ -266,6 +266,13 @@ class Dendrogram(object):
     def all_items(self):
         " Return a flattened iterable containing all items in the dendrogram "
         return self.items_dict.itervalues()
+    
+    @property
+    def main_branch(self):
+        " Return the branch (or leaf!) in the trunk with the most children "
+        if len(self.trunk) == 0:
+            return None
+        return sorted(self.trunk, key=lambda i: len(i.descendants) if type(i) == Branch else 1)[-1]
 
     def get_leaves(self):
         " Return a flattened list of all leaves in the dendrogram "
