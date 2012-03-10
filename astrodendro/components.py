@@ -123,38 +123,22 @@ class Leaf(object):
         if type(self) is Leaf and self.parent == None:
             return 0
         max_distance = 0
-        # Loop through all connected items:
-        for item in self.ancestor.descendants:
-            if item == self:
-                continue
-            distance = 1
-            if type(self) is Branch and item in self.descendants:
-                p = item.parent
-                while (p != self):
-                    p = p.parent
-                    distance += 1
-            elif type(item) is Branch and self in item.descendants:
-                p = self.parent
-                while (p != item):
-                    p = p.parent
-                    distance += 1
-            else:
-                common_ancestor = item.parent
-                # Count up to common ancestor:
-                while self not in common_ancestor.descendants:
-                    common_ancestor = common_ancestor.parent
-                    distance += 1
-                # Count down to this item:
-                p = self
-                while p != common_ancestor:
-                    p = p.parent
-                    distance += 1
-            # Now, we only care about the maximum distance:
-            if distance > max_distance:
-                max_distance = distance
+        # First check all children of this item:
+        if type(self) is Branch and self.items:
+            max_distance = max([d.level for d in self.descendants]) - self.level
+        # Now check other descendants of this item's ancestor
+        ignore_item = self
+        current_item = self.parent
+        while current_item:
+            peer_levels = [(max([d.level for d in item.descendants]) if type(item) is Branch else 1)
+                           for item in current_item.items if item is not ignore_item]
+            if peer_levels:
+                distance = max(peer_levels) - current_item.level + (self.level - current_item.level)
+                if distance > max_distance:
+                    max_distance = distance
+            ignore_item = current_item
+            current_item = current_item.parent
         return max_distance
-                
-                
 
 class Branch(Leaf):
 
