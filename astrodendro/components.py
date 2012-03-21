@@ -90,11 +90,10 @@ class Leaf(object):
     def level(self):
         " Level: 0 for items in the trunk, 1 for their immediate children, etc"
         if self._level is None:
-            self._level = 0
-            item = self
-            while item.parent:
-                self._level += 1
-                item = item.parent
+            if not self.parent:
+                self._level = 0
+            else:
+                self._level = self.parent.level + 1
         return self._level
 
     @property
