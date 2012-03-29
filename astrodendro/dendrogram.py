@@ -103,7 +103,7 @@ class Dendrogram(object):
             # We don't worry about the edges, because overflow or underflow in 
             # any one dimension will always land on an extra "padding" cell 
             # with value zero added above when index_map was created
-            indices_adjacent = [tuple(c) for c in np.add(neighbour_offsets, coord)]
+            indices_adjacent = [tuple(c) for c in np.add(neighbour_offsets, coords[i])]
             adjacent = [self.index_map[c] for c in indices_adjacent if self.index_map[c] != 0]
             
             # Replace adjacent elements by its ancestor
