@@ -155,7 +155,7 @@ class Dendrogram(object):
                 for idx in adjacent:
                     if type(items[idx]) == Leaf:
                         leaf = items[idx]
-                        if leaf.npix < minimum_npix or leaf.fmax - flux < minimum_delta:
+                        if leaf.npix < minimum_npix or leaf.fmax - flux < minimum_delta or leaf.fmax == flux:
                             merge.append(idx)
 
                 # Remove merges from list of adjacent items
