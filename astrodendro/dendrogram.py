@@ -107,15 +107,14 @@ class Dendrogram(object):
             adjacent = [self.index_map[c] for c in indices_adjacent if self.index_map[c] != 0]
             
             # Replace adjacent elements by its ancestor
-            adjacent = [ items[a].ancestor.idx for a in adjacent]
+            adjacent = [ items[a].ancestor for a in adjacent]
 
             # Remove duplicates
             adjacent = list(set(adjacent))
 
-            # Find how many unique adjacent structures there are
-            n_adjacent = len(adjacent)
+            # What happens next depends on how many unique adjacent structures there are
 
-            if n_adjacent == 0:  # Create new leaf
+            if not adjacent:  # No adjacent structures;  Create new leaf:
 
                 # Set absolute index of the new element
                 idx = next_idx()
@@ -129,19 +128,13 @@ class Dendrogram(object):
                 # Set absolute index of pixel in index map
                 self.index_map[coord] = idx
 
-            elif n_adjacent == 1:  # Add to existing leaf or branch
-
-                # Get absolute index of adjacent element
-                idx = adjacent[0]
-
-                # Get adjacent item
-                item = items[idx]
+            elif len(adjacent) == 1:  # Add to existing leaf or branch
 
                 # Add point to item
-                item.add_point(coord, flux)
+                adjacent[0].add_point(coord, flux)
 
                 # Set absolute index of pixel in index map
-                self.index_map[coord] = idx
+                self.index_map[coord] = adjacent[0].idx
 
             else:  # Merge leaves
 
@@ -151,102 +144,44 @@ class Dendrogram(object):
                 # Find all leaves that are not important enough to be kept
                 # separate. These leaves will now be treated the same as the pixel
                 # under consideration
-                merge = []
-                for idx in adjacent:
-                    if type(items[idx]) == Leaf:
-                        leaf = items[idx]
-                        if leaf.npix < minimum_npix or leaf.fmax - flux < minimum_delta or leaf.fmax == flux:
-                            merge.append(idx)
+                merge = [item for item in adjacent
+                         if type(item) is Leaf and
+                         (item.fmax - flux < minimum_delta or item.npix < minimum_npix or item.fmax == flux)]
 
                 # Remove merges from list of adjacent items
-                for idx in merge:
-                    adjacent.remove(idx)
+                for item in merge:
+                    adjacent.remove(item)
 
-                # Now, how many significant adjacent items are left?
+                # Now, figure out what object this pixel belongs to
+                # How many significant adjacent items are left?
 
-                if len(adjacent) == 0:
-
+                if not adjacent: #if len(adjacent) == 0:
                     # There are no separate leaves left (and no branches), so pick the
                     # first one as the reference and merge all the others onto it
-
-                    idx = merge[0]
-                    leaf = items[idx]
-
-                    # Add current point to the leaf
-                    leaf.add_point(coord, flux)
-
-                    # Set absolute index of pixel in index map
-                    self.index_map[coord] = idx
-
-                    for i in merge[1:]:
-
-                        # print "Merging leaf %i onto leaf %i" % (i, idx)
-
-                        # Remove leaf
-                        removed = items.pop(i)
-
-                        # Merge old leaf onto reference leaf
-                        leaf.merge(removed)
-
-                        # Update index map
-                        removed.add_footprint(self.index_map, idx)
-
+                    belongs_to = merge.pop()
+                    belongs_to.add_point(coord, flux)
                 elif len(adjacent) == 1:
-                    
                     # There is one significant adjacent leaf/branch left.
-                    # Add the point under consideration and all insignificant
-                    # leaves in 'merge' to the adjacent leaf/branch
-
-                    idx = adjacent[0]
-                    item = items[idx]  # Could be a leaf or a branch
-
-                    # Add current point to the leaf/branch
-                    item.add_point(coord, flux)
-
-                    # Set absolute index of pixel in index map
-                    self.index_map[coord] = idx
-
-                    for i in merge:
-
-                        # print "Merging leaf %i onto leaf/branch %i" % (i, idx)
-
-                        # Remove leaf
-                        removed = items.pop(i)
-
-                        # Merge insignificant leaves onto the leftover leaf/branch
-                        item.merge(removed)
-
-                        # Update index map
-                        removed.add_footprint(self.index_map, idx)
-
+                    belongs_to = adjacent[0]
+                    belongs_to.add_point(coord, flux)
                 else:
-
-                    # Set absolute index of the new element
-                    idx = next_idx()
-
-                    # Create branch
-                    branch = Branch([items[j] for j in adjacent], \
-                                    coord, flux, idx=idx)
-
+                    # Create a branch
+                    belongs_to = Branch(adjacent, coord, flux, idx=next_idx())
                     # Add branch to overall list
-                    items[idx] = branch
+                    items[belongs_to.idx] = belongs_to
+                
+                # Set absolute index of pixel in index map
+                self.index_map[coord] = belongs_to.idx
 
-                    # Set absolute index of pixel in index map
-                    self.index_map[coord] = idx
-
-                    for i in merge:
-
-                        # print "Merging leaf %i onto branch %i" % (i, idx)
-
-                        # Remove leaf
-                        removed = items.pop(i)
-
-                        # Merge old leaf onto reference leaf
-                        branch.merge(removed)
-
-                        # Update index map
-                        removed.add_footprint(self.index_map, idx)
-
+                # Add all insignificant leaves in 'merge' to the same object as this pixel:
+                for m in merge:
+                    # print "Merging leaf %i onto leaf %i" % (i, idx)
+                    # Remove leaf
+                    items.pop(m.idx)
+                    # Merge the insignificant item that this pixel now belongs to:
+                    belongs_to.merge(m)
+                    # Update index map
+                    m.add_footprint(self.index_map, belongs_to.idx)
 
         if verbose:
             progress_bar.progress = 100 # Done
