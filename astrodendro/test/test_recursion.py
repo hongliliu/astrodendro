@@ -8,9 +8,9 @@ class TestRecursionLimit(unittest.TestCase):
     """
     Test that we can efficiently compute deep dendrogram trees
     without hitting the recursion limit.
-    Note: plot() uses recursion but we should be able to compute
-    dendrograms without using deep recursion, which will ensure
-    deep dendrograms get computed quickly.
+    Note: plot() uses recursion but we should be able to *compute*
+    dendrograms without using deep recursion, even if we aren't 
+    yet able to plot them without using recursion.
     """
     def setUp(self):
         self._oldlimit = sys.getrecursionlimit()
@@ -28,12 +28,34 @@ class TestRecursionLimit(unittest.TestCase):
         # Notice every second column has a local maximum
         # so there are [size] local maxima in the array
     
-    def test_recursionlimit(self):
+    def test_compute(self):
         d = Dendrogram(self.data, verbose=False)
         
         leaves = d.get_leaves()
         
         self.assertEqual(len(leaves), self.size, msg="We expect {n} leaves, not {a}.".format(n=self.size, a=len(leaves)))
+    
+    def test_computing_level(self):
+        d = Dendrogram(self.data, verbose=False)
+        
+        # Now pick an item near the middle of the dendrogram:
+        mid_item = d.item_at((0, self.size//2))
+        
+        # Compute its level:
+        sys.setrecursionlimit(100000)
+        _ = mid_item.level
+        
+        # Now check the .level property of all items, in random order:
+        import random
+        items = random.sample(list(d.all_items), len(d.items_dict))
+        for item in items:
+            obj = item
+            level = item.level
+            while level > 0:
+                obj = obj.parent
+                level -= 1
+            self.assertEqual(obj.parent, None)
+            self.assertEqual(obj.level, 0)
     
     def tearDown(self):
         sys.setrecursionlimit(self._oldlimit)

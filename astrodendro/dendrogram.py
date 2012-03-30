@@ -199,7 +199,12 @@ class Dendrogram(object):
                 items.pop(leaf.idx)
                 self.trunk.remove(leaf)
                 leaf.add_footprint(self.index_map, 0)
-    
+        
+        # To make the item.level property fast, we ensure all the items in the
+        # trunk have their level cached as "0"
+        for item in self.trunk:
+            item._level = 0 # See the @property level() definition in components.py
+        
         # Save a list of all items accessible by ID
         self.items_dict = items 
 
@@ -308,6 +313,10 @@ class Dendrogram(object):
             return items
 
         self.trunk = construct_tree(tree)
+        # To make the item.level property fast, we ensure all the items in the
+        # trunk have their level cached as "0"
+        for item in self.trunk:
+            item._level = 0 # See the @property level() definition in components.py
     
     def item_at(self, coords):
         " Get the item at the given pixel coordinate, or None "

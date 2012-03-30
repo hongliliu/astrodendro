@@ -92,8 +92,21 @@ class Leaf(object):
         if self._level is None:
             if not self.parent:
                 self._level = 0
+            elif self.parent._level is not None:
+                self._level = self.parent._level + 1
             else:
-                self._level = self.parent.level + 1
+                #We could just use:
+                #  self._level = self.parent.level + 1
+                #But to avoid recursion, and keep things fast, we do it this way instead:
+                obj = self.parent
+                diff = 1
+                while obj._level is None:
+                    obj = obj.parent
+                    diff += 1
+                    # Note: we are counting on the dendrogram computation to ensure that
+                    # the _level property of all items in the trunk has been set to zero
+                self._level = obj._level + diff
+                self.parent._level = self._level - 1
         return self._level
 
     @property
