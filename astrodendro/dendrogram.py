@@ -188,19 +188,20 @@ class Dendrogram(object):
             progress_bar.show_progress()
             print("") # newline
 
-        # Remove orphan leaves that aren't large enough
-        remove = [idx for idx,item in items.iteritems()
-                  if item.parent is None and type(item) == Leaf
-                  and (item.npix < minimum_npix or item.fmax - item.fmin < minimum_delta)]
-        for idx in remove:
-            removed = items.pop(idx)
-            removed.add_footprint(self.index_map, 0)
+        # Create trunk from objects with no ancestors
+        self.trunk = [item for item in items.itervalues() if item.parent is None]
+        
+        # Remove orphan leaves that aren't large enough        
+        leaves_in_trunk = [item for item in self.trunk if type(item) == Leaf]
+        for leaf in leaves_in_trunk:
+            if (leaf.npix < minimum_npix or leaf.fmax - leaf.fmin < minimum_delta):
+                # This leaf is an orphan, so remove all references to it:
+                items.pop(leaf.idx)
+                self.trunk.remove(leaf)
+                leaf.add_footprint(self.index_map, 0)
     
         # Save a list of all items accessible by ID
-        self.items_dict = items
-
-        # Create trunk from objects with no ancestors
-        self.trunk = [item for item in items.itervalues() if item.parent == None] 
+        self.items_dict = items 
 
     @property
     def all_items(self):
