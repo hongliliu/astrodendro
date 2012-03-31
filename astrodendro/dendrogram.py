@@ -241,20 +241,6 @@ class Dendrogram(object):
         d.attrs['CLASS'] = 'IMAGE'
         d.attrs['IMAGE_VERSION'] = '1.2'
         d.attrs['IMAGE_MINMAXRANGE'] = [self.index_map.min(), self.index_map.max()]
-        
-        # Make map of leaves vs branches
-        item_type_map = np.zeros(self.data.shape, dtype=np.uint8)
-        for idx in self.items_dict:
-            item = self.items_dict[idx]
-            if type(item) == Leaf:
-                item.add_footprint(item_type_map, 2)
-            else:
-                item.add_footprint(item_type_map, 1, recursive=False)
-
-        d = f.create_dataset('item_type_map', data=item_type_map, compression=True)
-        d.attrs['CLASS'] = 'IMAGE'
-        d.attrs['IMAGE_VERSION'] = '1.2'
-        d.attrs['IMAGE_MINMAXRANGE'] = [item_type_map.min(), item_type_map.max()]
 
         d = f.create_dataset('data', data=self.data, compression=True)
         d.attrs['CLASS'] = 'IMAGE'
@@ -267,30 +253,38 @@ class Dendrogram(object):
 
         import h5py
 
-        f = h5py.File(filename, 'r')
+        h5f = h5py.File(filename, 'r')
 
-        self.n_dim = f.attrs['n_dim']
-
-        self.data = f['data'].value
-        self.index_map = f['index_map'].value
-        self.item_type_map = f['item_type_map'].value
+        self.n_dim = h5f.attrs['n_dim']
+        self.data = h5f['data'].value
+        self.index_map = h5f['index_map'].value
         self.items_dict = {}
-
-        tree = parse_newick(f['newick'].value)
+        
+        flux_by_item = {}
+        coords_by_item = {}
+        # Do a fast iteration through self.data, adding the coords and flux values
+        # to the two dictionaries declared above:
+        for coord in [tuple(c) for c in np.array(np.unravel_index( np.arange(self.data.size), self.data.shape)).transpose()]:
+            idx = self.index_map[coord]
+            if idx:
+                try:
+                    flux_by_item[idx].append(self.data[coord])
+                    coords_by_item[idx].append(coord)
+                except KeyError:
+                    flux_by_item[idx] = [self.data[coord]]
+                    coords_by_item[idx] = [coord]
 
         def construct_tree(d):
             items = []
             for idx in d:
-                item_coords = zip(*(np.where(self.index_map == idx)))
-                f = self.data[self.index_map == idx]
+                item_coords = coords_by_item[idx]
+                f = flux_by_item[idx]
                 if type(d[idx]) == tuple:
                     sub_items_repr = d[idx][0] # Parsed representation of sub items
                     sub_items = construct_tree(sub_items_repr)
                     for i in sub_items:
                         self.items_dict[i.idx] = i
-                    b = Branch(sub_items, item_coords[0], f[0], idx=idx)
-                    for i in range(1, len(f)):
-                        b.add_point(item_coords[i], f[i])
+                    b = Branch(sub_items, item_coords, f, idx=idx)
                     # Correct merge levels - complicated because of the
                     # order in which we are building the tree.
                     # What we do is look at the heights of this branch's
@@ -305,14 +299,12 @@ class Dendrogram(object):
                     self.items_dict[idx] = b
                     items.append(b)
                 else:
-                    l = Leaf(item_coords[0], f[0], idx=idx)
-                    for i in range(1, len(f)):
-                        l.add_point(item_coords[i], f[i])
+                    l = Leaf(item_coords, f, idx=idx)
                     items.append(l)
                     self.items_dict[idx] = l
             return items
 
-        self.trunk = construct_tree(tree)
+        self.trunk = construct_tree(parse_newick(h5f['newick'].value))
         # To make the item.level property fast, we ensure all the items in the
         # trunk have their level cached as "0"
         for item in self.trunk:

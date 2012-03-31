@@ -5,9 +5,14 @@ class Leaf(object):
     #   for computing the dendrogram and should never be used manually:       #
     ###########################################################################
     def __init__(self, coord, f, idx=None):
-        self.coords = [coord]
-        self.f = [f]
-        self.fmin, self.fmax = f, f
+        if not hasattr(f, '__iter__'): # Normal initialization - coord and f are for a single pixel:
+            self.coords = [coord]
+            self.f = [f]
+            self.fmin, self.fmax = f, f
+        else:
+            self.coords = coord
+            self.f = f
+            self.fmin, self.fmax = min(f), max(f)
         self.idx = idx
         self.parent = None
         self._ancestor = None # Cached ancestor, if any

@@ -1,4 +1,5 @@
 import timeit
+import os
 import astrodendro
 from astrodendro.test._testdata import data
 
@@ -22,6 +23,28 @@ def benchmark_compute():
     
     print("Total average compute time: {0:.3}s".format((t1+t2)/2))
     
+def benchmark_hdf5():    
+    print("\nGenerating complex dendrogram for HDF5 import/export...")
+    d = astrodendro.Dendrogram(data, minimum_npix=2, minimum_flux=1.4, minimum_delta=0.01, verbose=False)
+    print("Dendrogram generated. Testing import and export...")
+    
+    filename = '.astrodendro-hdf5-benchmark.hdf5'
+    if os.path.exists(filename):
+        os.remove(filename)
+    num = 2
+    
+    def testHDF5():
+        print('Exporting...')
+        d.to_hdf5(filename)
+        print('Importing...')
+        d2 = astrodendro.Dendrogram()
+        d2.from_hdf5(filename)
+        os.remove(filename)
+
+    t = timeit.timeit(testHDF5, number=num) / num
+
+    print("Total average export+import time: {0:.3}s".format(t))
+    
 def benchmark_plot():    
     print("\nGenerating complex dendrogram for plotting test...")
     d = astrodendro.Dendrogram(data, minimum_npix=2, minimum_flux=1.4, minimum_delta=0.01, verbose=False)
@@ -39,6 +62,7 @@ def benchmark_plot():
 if __name__ == '__main__':
     try:
         benchmark_compute()
+        benchmark_hdf5()
         benchmark_plot()
     except KeyboardInterrupt:
         print("Cancelled.")
