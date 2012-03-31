@@ -104,7 +104,7 @@ class Dendrogram(object):
             # any one dimension will always land on an extra "padding" cell 
             # with value zero added above when index_map was created
             indices_adjacent = [tuple(c) for c in np.add(neighbour_offsets, coords[i])]
-            adjacent = [self.index_map[c] for c in indices_adjacent if self.index_map[c] != 0]
+            adjacent = [self.index_map[c] for c in indices_adjacent if self.index_map[c]]
             
             # Replace adjacent elements by its ancestor
             adjacent = [ items[a].ancestor for a in adjacent]
