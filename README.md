@@ -109,6 +109,8 @@ An simple application is included which uses PyGTK, astrodendro and
 interactively generate dendrograms and see the correspondence between pixels in
 the data cube and items in the dendrogram. 
 
+__Note: at present the viewer requires IPython 0.11 to run (not 0.10 or 0.12)__
+
 ![Screenshot](http://i.imgur.com/GIUwf.png)
 
 The viewer currently only loads FITS files.
