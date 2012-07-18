@@ -61,7 +61,7 @@ class Dendrogram(object):
         
         if verbose:
             print("Generating dendrogram using {:,} of {:,} pixels ({}% of data)".format(flux_values.size, self.data.size, (100*flux_values.size/self.data.size)))
-            progress_bar = AnimatedProgressBar(end=flux_values.size, width=40, fill='=', blank=' ')
+            progress_bar = AnimatedProgressBar(end=max(flux_values.size,1), width=40, fill='=', blank=' ')
             
         # Define index array indicating what item each cell is part of
         # We expand each dimension by one, so the last value of each
