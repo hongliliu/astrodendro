@@ -115,9 +115,24 @@ __Note: at present the viewer requires IPython 0.11 to run (not 0.10 or 0.12)__
 
 The viewer currently only loads FITS files.
 
-To launch the viewer, run the following command:
+Say you want to view dendrograms created from the data in a FITS file called
+"L1448.13co.fits". There are three ways to launch the viewer:
 
-	astrodendro-viewer fits_file.fits
+1. From a shell, run the following command, changing the FITS file path:  
+   `astrodendro-viewer L1448.13co.fits`  
+   (If astrodendro was installed via pip, the `astrodendro-viewer` script
+    should have been added to your PATH and can be run like any other program)
+2. Alternately, if that script is not in your PATH but astrodendro had been
+   installed correctly, you can launch the viewer using:  
+   `python -m astrodendro.viewer L1448.13co.fits`
+3. Finally, from a python shell or python script, one can use the following 
+   commands to open the viewer:
+   
+   ```python
+   from astrodendro.viewer import DendroViewer
+   DendroViewer("L1448.13co.fits").run()
+   ```
+
 
 To use the viewer, specify the desired `min_flux`, `min_npix`, and `min_delta`
 values, and click on the __Compute__ button. A dendrogram will be generated.

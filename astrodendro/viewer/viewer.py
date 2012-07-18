@@ -266,9 +266,3 @@ class DendroViewer:
             self._highlighter_cube.highlight(mapdata)
             self._highlighter_dend.highlight(item)    
 
-if __name__ == "__main__":
-    filename = False
-    if len(sys.argv) == 2:
-        filename = sys.argv[1]
-    v = DendroViewer(filename)
-    v.run()
