@@ -89,7 +89,8 @@ class Test3DimensionalData(unittest.TestCase):
         # The following loop construct may look crazy, but it is a more
         # efficient way of iterating through the array than using a regular
         # nditer with multi_index.
-        for coord in [tuple(c) for c in np.array(np.unravel_index( np.arange(self.data.size), self.data.shape)).transpose()]:
+        for coord in np.array(np.unravel_index( np.arange(self.data.size), self.data.shape)).transpose():
+            coord = tuple(coord)
             f = self.data[coord]
             if (f < 1.4):
                 self.assertEqual(d.item_at(coord), None)

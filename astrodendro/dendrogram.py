@@ -264,7 +264,8 @@ class Dendrogram(object):
         coords_by_item = {}
         # Do a fast iteration through self.data, adding the coords and flux values
         # to the two dictionaries declared above:
-        for coord in [tuple(c) for c in np.array(np.unravel_index( np.arange(self.data.size), self.data.shape)).transpose()]:
+        for coord in np.array(np.unravel_index( np.arange(self.data.size), self.data.shape)).transpose():
+            coord = tuple(coord)
             idx = self.index_map[coord]
             if idx:
                 try:
