@@ -74,10 +74,17 @@ class Dendrogram(object):
         
         # Define a list of offsets we add to any coordinate to get the coords
         # of all neighbouring pixels
-        if self.n_dim is 3:
+        if self.n_dim == 3:
             neighbour_offsets = np.array([(0,0,-1),(0,0,1),(0,-1,0),(0,1,0),(-1,0,0),(1,0,0)])
-        else:
+        elif self.n_dim == 2:
             neighbour_offsets = np.array([(0,-1),(0,1),(-1,0),(1,0)])
+        elif self.n_dim == 1:
+            neighbour_offsets = np.array([(-1,),(1),])
+        else: # N-dimensional case. Analogous to the above.
+            neighbour_offsets = np.concatenate((
+                np.identity(self.n_dim, dtype=int),
+                np.identity(self.n_dim, dtype=int)*-1
+            ))
 
         # Loop from largest to smallest flux value. Each time, check if the 
         # pixel connects to any existing leaf. Otherwise, create new leaf.
