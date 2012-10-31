@@ -63,7 +63,7 @@ class Dendrogram(object):
                 merge_test_function=None, verbose=False):
 
         if merge_test_function is None:
-            merge_test_function = lambda n, c, i: True
+            merge_test_function = lambda n, c, i: False
 
         self = Dendrogram()
         self.data = data
@@ -173,7 +173,7 @@ class Dendrogram(object):
                          (node.fmax - intensity < min_delta or
                           len(node.f) < min_npix or
                           node.fmax == intensity or
-                          not merge_test_function(node, coords, intensity))]
+                          merge_test_function(node, coords, intensity))]
 
                 # Remove merges from list of adjacent nodes
                 for node in merge:
