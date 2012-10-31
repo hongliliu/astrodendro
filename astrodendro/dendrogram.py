@@ -59,7 +59,12 @@ class Dendrogram(object):
         self.load_from = static_warning
 
     @staticmethod
-    def compute(data, min_intensity=-np.inf, min_npix=0, min_delta=0, verbose=False):
+    def compute(data, min_intensity=-np.inf, min_npix=0, min_delta=0,
+                merge_test_function=None, verbose=False):
+
+        if merge_test_function is None:
+            merge_test_function = lambda n, c, i: True
+
         self = Dendrogram()
         self.data = data
         self.n_dim = len(data.shape)
@@ -166,7 +171,9 @@ class Dendrogram(object):
                 merge = [node for node in adjacent
                          if type(node) is Leaf and
                          (node.fmax - intensity < min_delta or
-                          len(node.f) < min_npix or node.fmax == intensity)]
+                          len(node.f) < min_npix or
+                          node.fmax == intensity or
+                          not merge_test_function(node, coords, intensity))]
 
                 # Remove merges from list of adjacent nodes
                 for node in merge:
