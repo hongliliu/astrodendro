@@ -63,7 +63,7 @@ class Dendrogram(object):
                 merge_test_function=None, verbose=False):
 
         if merge_test_function is None:
-            merge_test_function = lambda n, c, i: False
+            merge_test_function = lambda n, **k: False
 
         self = Dendrogram()
         self.data = data
@@ -173,7 +173,7 @@ class Dendrogram(object):
                          (node.fmax - intensity < min_delta or
                           len(node.f) < min_npix or
                           node.fmax == intensity or
-                          merge_test_function(node, coords, intensity))]
+                          merge_test_function(node, coords=coords, intensity=intensity))]
 
                 # Remove merges from list of adjacent nodes
                 for node in merge:
@@ -221,7 +221,7 @@ class Dendrogram(object):
         # Remove orphan leaves that aren't large enough
         leaves_in_trunk = [node for node in self.trunk if type(node) == Leaf]
         for leaf in leaves_in_trunk:
-            if (len(leaf.f) < min_npix or leaf.fmax - leaf.fmin < min_delta):
+            if (len(leaf.f) < min_npix or leaf.fmax - leaf.fmin < min_delta or merge_test_function(leaf)):
                 # This leaf is an orphan, so remove all references to it:
                 nodes.pop(leaf.idx)
                 self.trunk.remove(leaf)
