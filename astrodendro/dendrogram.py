@@ -60,7 +60,7 @@ class Dendrogram(object):
         coords = np.array(np.unravel_index( np.arange(self.data.size)[keep] , self.data.shape)).transpose()
         
         if verbose:
-            print("Generating dendrogram using {:,} of {:,} pixels ({}% of data)".format(flux_values.size, self.data.size, (100*flux_values.size/self.data.size)))
+            print("Generating dendrogram using {0} of {1} pixels ({2}% of data)".format(flux_values.size, self.data.size, (100*flux_values.size/self.data.size)))
             progress_bar = AnimatedProgressBar(end=max(flux_values.size,1), width=40, fill='=', blank=' ')
             
         # Define index array indicating what item each cell is part of
