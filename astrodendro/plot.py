@@ -316,57 +316,36 @@ class FluxPixelPlot(DendrogramPlot):
     A plot that sorts the dendrogram according to the max. flux value found
     among that branch and its children
     """
-    def __init__(self, dendrogram, color_lambda, axes, line_width, spacing=5, autoscale=True):
+    def __init__(self, dendrogram, color_lambda, axes, line_width, spacing=5,
+            autoscale=True, brightest=True, xlambda=lambda x: x, ylambda=lambda y:y):
         
         self._dendrogram = dendrogram
         self._color_lambda = color_lambda
         
-        self.spacing = spacing
-        self.x_increment = line_width + spacing
-        self._flux_mult = line_width # All y values (flux values) should be multiplied by this factor 
-        self._next_x = 0
-        
-        # item_x_map: A map of the positions of each item
-        # recursing through all items in the dendrogram.
-        # Keys are item.idx
-        # Values are (type, xmin, xmax, ymin, ymax, color)
-        # For Leaf items, xmin=xmax.
-        self._item_rect_map = {} # map of x index
-        
-        # Build our map of the positions of each item:
-        self._build_rect_map(dendrogram.trunk, sort_by=lambda item: item.get_peak_recursive()[2])
+        self._xlambda = xlambda
+        self._ylambda = ylambda
 
         self._plot_values={}
         
-        DendrogramPlot.__init__(self, axes=axes, line_width=line_width, autoscale=autoscale)
+        self._build_lines(dendrogram.trunk, brightest=brightest)
+        
+        DendrogramPlot.__init__(self, axes=axes, line_width=line_width,
+                autoscale=autoscale)
 
-    def _build_rect_map(self, items, sort_by):
-        items_sorted = sorted(items, key=sort_by)
-        for item in items_sorted:
-            # don't need this for flux-radius plots
-            #if item.parent:
-            #    ymin = item.parent.merge_level * self._flux_mult
-            #else:
-            #    ymin = 0
+    def _build_lines(self, items, brightest=True):
+        for item in items:
                 
-            # color = self._color_lambda(item)
+            color = self._color_lambda(item)
+
+            if brightest:
+                childdict = get_mostest_children(item,props=('npix','f_sum'),mostest='f_sum')
+                self._plot_values[item.idx] = {'color':color,
+                        'values':[(childdict['npix'],childdict['f_sum'])]}
+            else:
+                childdictlist = get_all_children(item,props=('npix','f_sum'),mostest='f_sum')
+                self._plot_values[item.idx] = {'color':color,
+                        'values':[(cd['npix'],cd['f_sum']) for cd in childdictlist]}
             
-            if type(item) == Leaf:
-                plotvals = [(item.npix, item.f_sum)]
-                a = item.parent
-                while a.parent:
-                    plotvals.append( (a.npix,a.f_sum) )
-                    a = a.parent
-                self._plot_values[item.idx] = np.array(plotvals).T
-            elif type(item) == Branch:
-                continue
-                #xmin, xmax = self._build_rect_map(item.items, sort_by) # This is where the recursion happens
-                #ymax = item.merge_level*self._flux_mult
-                #self._item_rect_map[item.idx] = (Branch, xmin, xmax, ymin, ymax, color)
-        # Return the position of the vertical line representing the first and last item:
-        # _,first_xmin,first_xmax,_,_,_ = self._item_rect_map[items_sorted[0].idx]
-        # _,last_xmin,last_xmax,_,_,_ = self._item_rect_map[items_sorted[-1].idx]
-        # return (first_xmin+first_xmax)//2, (last_xmin+last_xmax)//2
         
 
     def _plot_trunk(self):
@@ -379,11 +358,42 @@ class FluxPixelPlot(DendrogramPlot):
 
     def _plot(self, plotvalues, **kwargs):
         lines = []
-        for x,y in plotvalues:
-            lines.append(mpl.lines.Line2d(x,y,**kwargs))
-        return lines
+        colors = []
+        for pvd in plotvalues:
+            for x,y in pvd['values']:
+                lines.append(np.array([self._xlambda(x),self._ylambda(y)]).T)
+                colors.append(pvd['color'])
+        return lines,colors
 
     def item_at(self,x,y):
         """ Returns the item at the given point on the plot, or None """
         return None
-    
+
+def get_all_children(item, props=('npix','f_sum')):
+    """
+    Return certain properties of all children (recursively)
+    """
+    if type(item) == Leaf:
+        return [dict([(p,[getattr(item,p)]) for p in props])]
+    else:
+        childprops = [get_all_children(d) for d in item.descendants]
+        return [dict([(p,[getattr(item,p)]+cp[p]) 
+            for p in props])
+            for x in childprops # have to unwrap the list-of-dicts
+            for cp in x]
+
+def get_mostest_children(item, props=('npix','f_sum'), mostest='f_sum'):
+    """
+    Return certain properties of all children selecting the mostest
+    of something (e.g., brightest)
+    """
+    if type(item) == Leaf:
+        return dict([(p,[getattr(item,p)]) for p in props])
+    else:
+        brightest = item.descendants[0]
+        for d in item.descendants:
+            if getattr(d,mostest) > getattr(d,mostest):
+                brightest = d
+        brightest_props = get_mostest_children(brightest)
+        return dict([(p,[getattr(item,p)] + brightest_props[p])
+            for p in props])

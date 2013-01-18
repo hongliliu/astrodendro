@@ -29,7 +29,7 @@ from .newick import parse_newick
 from .progressbar import AnimatedProgressBar
 try:
     import matplotlib.pylab
-    from .plot import RecursiveSortPlot, SpatialCoordPlot, SpatialMeanCoordPlot
+    from .plot import RecursiveSortPlot, SpatialCoordPlot, SpatialMeanCoordPlot, FluxPixelPlot
     _plotting_enabled = True
 except ImportError:
     # The plot method won't work without matplotlib, but everything else will be fine
@@ -357,6 +357,7 @@ class Dendrogram(object):
             'x_coord': plot items according to the X coordinate of the leaf item with peak flux value
             'y_coord': same, but uses Y coordinate
             'z_coord': same, but uses Y coordinate
+            'fluxpix': Plot the flux vs the number of pixels.  Branches are not connected.
         
         color can be:
             1. An RGBA tuple, e.g. for red color=(1,0,0,1)
@@ -399,5 +400,8 @@ class Dendrogram(object):
             coord_indices = {'x':0, 'y':1, 'z':2}
             coord_index = coord_indices[style[0]]
             return SpatialMeanCoordPlot(dendrogram=self, axes=axes, color_lambda=color_lambda, line_width=line_width, coord_index=coord_index, **kwargs)
+        elif style == 'fluxpix':
+            return FluxPixelPlot(dendrogram=self, axes=axes,
+                    color_lambda=color_lambda, line_width=line_width, **kwargs)
         else:
             raise Exception("Invalid plot style requested.")
