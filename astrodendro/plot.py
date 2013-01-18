@@ -317,13 +317,24 @@ class FluxPixelPlot(DendrogramPlot):
     among that branch and its children
     """
     def __init__(self, dendrogram, color_lambda, axes, line_width, spacing=5,
-            autoscale=True, brightest=True, xlambda=lambda x: x, ylambda=lambda y:y):
+            autoscale=True, brightest=True, xlambda=lambda x: x,
+            ylambda=lambda y:y, color_by='npix'):
+        """
+        brightest : bool
+            If true, just get the brightest of each branch from the trunk,
+            else get ALL branches all the way down (takes a while!)
+        xlambda, ylambda : functions
+            Scaling functions for x and y axes
+        color_by : 'npix' or 'f_sum'
+            Which value to colorize by
+        """
         
         self._dendrogram = dendrogram
         self._color_lambda = color_lambda
         
         self._xlambda = xlambda
         self._ylambda = ylambda
+        self._color_by = color_by
 
         self._plot_values={}
         
@@ -335,18 +346,18 @@ class FluxPixelPlot(DendrogramPlot):
     def _build_lines(self, items, brightest=True):
         for item in items:
                 
-            color = self._color_lambda(item)
 
             if brightest:
                 childdict = get_mostest_children(item,props=('npix','f_sum'),mostest='f_sum')
-                self._plot_values[item.idx] = {'color':color,
+                self._plot_values[item.idx] = {'color':[self._color_lambda(np.array(childdict[self._color_by]))],
                         'values':[(childdict['npix'],childdict['f_sum'])]}
             else:
-                childdictlist = get_all_children(item,props=('npix','f_sum'),mostest='f_sum')
-                self._plot_values[item.idx] = {'color':color,
-                        'values':[(cd['npix'],cd['f_sum']) for cd in childdictlist]}
-            
-        
+                childdictlist = get_all_children(item,props=('npix','f_sum'))
+                self._plot_values[item.idx] = dict([ (
+                        ('color',[self._color_lambda(np.array(cd[self._color_by]))]),
+                        ('values',[(cd['npix'],cd['f_sum'])])
+                            ) for cd in childdictlist ] )
+                
 
     def _plot_trunk(self):
         # Now do the plot:
@@ -362,7 +373,7 @@ class FluxPixelPlot(DendrogramPlot):
         for pvd in plotvalues:
             for x,y in pvd['values']:
                 lines.append(np.array([self._xlambda(x),self._ylambda(y)]).T)
-                colors.append(pvd['color'])
+                colors += (pvd['color'])
         return lines,colors
 
     def item_at(self,x,y):
@@ -376,7 +387,7 @@ def get_all_children(item, props=('npix','f_sum')):
     if type(item) == Leaf:
         return [dict([(p,[getattr(item,p)]) for p in props])]
     else:
-        childprops = [get_all_children(d) for d in item.descendants]
+        childprops = [get_all_children(d) for d in item.descendants if d.level == item.level+1]
         return [dict([(p,[getattr(item,p)]+cp[p]) 
             for p in props])
             for x in childprops # have to unwrap the list-of-dicts
@@ -392,7 +403,9 @@ def get_mostest_children(item, props=('npix','f_sum'), mostest='f_sum'):
     else:
         brightest = item.descendants[0]
         for d in item.descendants:
-            if getattr(d,mostest) > getattr(d,mostest):
+            if d.level != item.level+1:
+                continue
+            if getattr(d,mostest) > getattr(brightest,mostest):
                 brightest = d
         brightest_props = get_mostest_children(brightest)
         return dict([(p,[getattr(item,p)] + brightest_props[p])
