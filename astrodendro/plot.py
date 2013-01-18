@@ -1,4 +1,5 @@
 import matplotlib as mpl
+import numpy as np
 from .components import Leaf, Branch
 
 class DendrogramPlot:
@@ -309,3 +310,80 @@ class FuturePlot(DendrogramPlot):
     def item_at(self,x,y):
         """ Returns the item at the given point on the plot, or None """
         raise NotImplementedError("This type of plot has not implemented item_at() !")
+    
+class FluxPixelPlot(DendrogramPlot):
+    """
+    A plot that sorts the dendrogram according to the max. flux value found
+    among that branch and its children
+    """
+    def __init__(self, dendrogram, color_lambda, axes, line_width, spacing=5, autoscale=True):
+        
+        self._dendrogram = dendrogram
+        self._color_lambda = color_lambda
+        
+        self.spacing = spacing
+        self.x_increment = line_width + spacing
+        self._flux_mult = line_width # All y values (flux values) should be multiplied by this factor 
+        self._next_x = 0
+        
+        # item_x_map: A map of the positions of each item
+        # recursing through all items in the dendrogram.
+        # Keys are item.idx
+        # Values are (type, xmin, xmax, ymin, ymax, color)
+        # For Leaf items, xmin=xmax.
+        self._item_rect_map = {} # map of x index
+        
+        # Build our map of the positions of each item:
+        self._build_rect_map(dendrogram.trunk, sort_by=lambda item: item.get_peak_recursive()[2])
+
+        self._plot_values={}
+        
+        DendrogramPlot.__init__(self, axes=axes, line_width=line_width, autoscale=autoscale)
+
+    def _build_rect_map(self, items, sort_by):
+        items_sorted = sorted(items, key=sort_by)
+        for item in items_sorted:
+            # don't need this for flux-radius plots
+            #if item.parent:
+            #    ymin = item.parent.merge_level * self._flux_mult
+            #else:
+            #    ymin = 0
+                
+            # color = self._color_lambda(item)
+            
+            if type(item) == Leaf:
+                plotvals = [(item.npix, item.f_sum)]
+                a = item.parent
+                while a.parent:
+                    plotvals.append( (a.npix,a.f_sum) )
+                    a = a.parent
+                self._plot_values[item.idx] = np.array(plotvals).T
+            elif type(item) == Branch:
+                continue
+                #xmin, xmax = self._build_rect_map(item.items, sort_by) # This is where the recursion happens
+                #ymax = item.merge_level*self._flux_mult
+                #self._item_rect_map[item.idx] = (Branch, xmin, xmax, ymin, ymax, color)
+        # Return the position of the vertical line representing the first and last item:
+        # _,first_xmin,first_xmax,_,_,_ = self._item_rect_map[items_sorted[0].idx]
+        # _,last_xmin,last_xmax,_,_,_ = self._item_rect_map[items_sorted[-1].idx]
+        # return (first_xmin+first_xmax)//2, (last_xmin+last_xmax)//2
+        
+
+    def _plot_trunk(self):
+        # Now do the plot:
+        return self._plot(self._plot_values.values())
+        
+    def _plot_item(self, item):
+        """ Plot an item and its children. """
+        return self._plot([self._plot_values[item.idx]])
+
+    def _plot(self, plotvalues, **kwargs):
+        lines = []
+        for x,y in plotvalues:
+            lines.append(mpl.lines.Line2d(x,y,**kwargs))
+        return lines
+
+    def item_at(self,x,y):
+        """ Returns the item at the given point on the plot, or None """
+        return None
+    
