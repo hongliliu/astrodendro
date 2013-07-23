@@ -531,3 +531,6 @@ class TreeIndex(object):
 
     def values(self, sid, subtree=True):
         return self._data[self.indices(sid, subtree=subtree)]
+
+    def get_f_sum(self):
+        return self.values().sum()

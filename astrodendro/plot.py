@@ -182,3 +182,60 @@ class DendrogramPlotter(object):
         sc = StructureCollection(lines, **kwargs)
         sc.structures = mapping
         return sc
+
+def get_all_children(item, props=('npix','f_sum')):
+    """
+    Return certain properties of all children (recursively)
+    """
+    item.get_f_sum = lambda: item.values().sum()
+    if item.is_leaf:
+        return [dict([(p,[get(item,p)]) for p in props])]
+    else:
+        childprops = [get_all_children(d) for d in item.descendants if d.level == item.level+1]
+        return [dict([(p,[get(item,p)]+cp[p])
+                      for p in props])
+                for x in childprops # have to unwrap the list-of-dicts
+                for cp in x]
+
+def get_mostest_children(item, props=('npix','f_sum'), mostest='f_sum'):
+    """
+    Return certain properties of all children selecting the mostest
+    of something (e.g., brightest)
+    """
+    item.get_f_sum = lambda: item.values().sum()
+    if item.is_leaf:
+        d = dict([(p,[get(item,p)]) for p in props])
+        d['branch'] = [item]
+        return d
+    else:
+        brightest = item.children[0]
+        brightest.get_f_sum = lambda: brightest.values().sum()
+        for child in item.children[1:]:
+            child.get_f_sum = lambda: child.values().sum()
+            if get(child,mostest) > get(brightest,mostest):
+                brightest = child
+        brightest_props = get_mostest_children(brightest)
+        d = dict([(p,[get(item,p)] + brightest_props[p])
+                     for p in props])
+        d['branch'] = [item] + brightest_props['branch']
+        return d
+
+def get_biggest_children(item, props=('npix','f_sum')):
+    """
+    Return certain properties of all children selecting them based on their size
+    (i.e., greatest # of pixels)
+    """
+    if item.is_leaf:
+        d = dict([(p,[get(item,p)]) for p in props])
+        d['branch'] = [item]
+        return d
+    else:
+        biggest = item.children[0]
+        for child in item.children[1:]:
+            if child.npix > biggest.npix:
+                biggest = child
+        biggest_props = get_biggest_children(biggest)
+        d = dict([(p,[get(item,p)] + biggest_props[p])
+                     for p in props])
+        d['branch'] = [item] + biggest_props['branch']
+        return d
