@@ -193,7 +193,7 @@ class DendrogramPlotter(object):
             if subtree:
                 if type(structures) is int:
                     structure = self.dendrogram[structures]
-                elif issubclass(structures, Structure):
+                elif isinstance(structures, Structure):
                     structure = structures
                 elif type(structures[0]) is int:
                     structure = self.dendrogram[structures[0]]
